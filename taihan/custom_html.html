@@ -1,0 +1,56 @@
+<meta name="pdfkit-orientation" content="portrait" />
+<meta name="page-size" content="A4" />
+
+<div class="bigbox">
+    <div class="container">
+        <div class="row">
+            <div class="col-xs-6"><br>
+                <img src="/private/files/Taihan_Kuwait_logo.jpg" width="200px">
+            </div>
+            <div class="col-xs-6"><br>
+                <p style="font-size:16px;color:#0f1568;font-family:Arial;font-weight:bold">Taihan Kuwait Fiber Optic Cable</p>
+                <p style="font-size:10px;">{{ doc.company }}</p>
+                <p style="font-size:10px;">Order Date: {{ doc.transaction_date }}</p>
+                <p style="font-size:10px;">Required Date: {{ doc.schedule_date }}</p>
+            </div>
+        </div>
+    </div>
+
+    <br>
+    <div class="line" style="font-size:20px; color:#0f1568; font-family:Arial; font-weight:bold;text-align:left">
+        <span>Material Request</span>
+    </div>
+
+    <div class="row">
+        <div class="col-xs-7">
+            <h3 style="font-size:14px;font-family: Verdana, sans-serif;">Material Request To:</h3>
+            <p style="font-size:10px;">{{ supplier.supplier_name or '' }}</p>
+            <p style="font-size:10px;">{{ supplier.supplier_email or '' }}</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xs-12">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <td style="border-color:#0f1568; background-color: #0f1568; color: white;">No</td>
+                        <td style="border-color:#0f1568; background-color: #0f1568; color: white;">Item</td>
+                        <td style="border-color:#0f1568; background-color: #0f1568; color: white;">Item Name</td>
+                        <td style="border-color:#0f1568; background-color: #0f1568; color: white;">UOM</td>
+                        <td style="border-color:#0f1568; background-color: #0f1568; color: white;">Total Qty</td>
+                    </tr>
+                </thead>
+                {% for row in doc.items %}
+                <tr>
+                    <td style="border-color:#0f1568">{{ row.idx }}</td>
+                    <td style="border-color:#0f1568">{{ row.item_code }}</td>
+                    <td style="border-color:#0f1568">{{ row.description }}</td>
+                    <td style="border-color:#0f1568">{{ row.stock_uom }}</td>
+                    <td style="text-align:right;border-color:#0f1568">{{ row.qty }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</div>

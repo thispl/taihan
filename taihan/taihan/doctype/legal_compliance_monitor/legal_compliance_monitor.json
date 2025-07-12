@@ -1,0 +1,271 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "LCM.####",
+ "creation": "2025-01-10 13:21:09.393469",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "name_of_licence",
+  "sub_category",
+  "group",
+  "vehicle_number",
+  "vehicle_type",
+  "waste_type",
+  "category",
+  "contact_number",
+  "reference_number",
+  "issuing_authority",
+  "company",
+  "column_break_mijq",
+  "issue_date",
+  "possibility_status",
+  "last_renewal_date",
+  "next_due",
+  "alert_date",
+  "alert_mails",
+  "frequency_of_renewal_days",
+  "days_left",
+  "status",
+  "current_status",
+  "today_status",
+  "attach_file",
+  "custodian_information_section",
+  "custodian",
+  "custodian_name",
+  "attach",
+  "custodian_resident_qid_number",
+  "column_break_vilz",
+  "email",
+  "sponsor_company",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "name_of_licence",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Main Category",
+   "options": "Name of the License"
+  },
+  {
+   "fieldname": "sub_category",
+   "fieldtype": "Data",
+   "label": "Sub Category"
+  },
+  {
+   "fieldname": "group",
+   "fieldtype": "Select",
+   "label": "Group",
+   "options": "\nSponsor Company\nVehicle\nOthers"
+  },
+  {
+   "depends_on": "eval:doc.group==\"Vehicle\"",
+   "fieldname": "vehicle_number",
+   "fieldtype": "Link",
+   "label": "Vehicle Number",
+   "options": "Vehicle"
+  },
+  {
+   "depends_on": "eval:doc.group==\"Vehicle\"",
+   "fetch_from": "vehicle_number.custom_vehicle_category",
+   "fetch_if_empty": 1,
+   "fieldname": "vehicle_type",
+   "fieldtype": "Data",
+   "label": "Vehicle Type"
+  },
+  {
+   "depends_on": "eval:doc.name_of_licence==\"WASTE\"",
+   "fieldname": "waste_type",
+   "fieldtype": "Data",
+   "label": "Waste Type"
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Category",
+   "options": "Category"
+  },
+  {
+   "fieldname": "contact_number",
+   "fieldtype": "Data",
+   "label": "Contact Number",
+   "length": 10
+  },
+  {
+   "fieldname": "reference_number",
+   "fieldtype": "Data",
+   "label": "Reference Number"
+  },
+  {
+   "fieldname": "issuing_authority",
+   "fieldtype": "Data",
+   "label": "Issuing Authority"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "column_break_mijq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "issue_date",
+   "fieldtype": "Date",
+   "label": "Issue Date"
+  },
+  {
+   "fieldname": "possibility_status",
+   "fieldtype": "Select",
+   "label": "Renewability Status",
+   "options": "\nRenewable\nNon-Renewable\nUnlimited Validity"
+  },
+  {
+   "depends_on": "eval:doc.possibility_status == 'Renewable'",
+   "fieldname": "last_renewal_date",
+   "fieldtype": "Date",
+   "label": "Last Renewal Date"
+  },
+  {
+   "depends_on": "eval:doc.possibility_status == 'Renewable'",
+   "fieldname": "next_due",
+   "fieldtype": "Date",
+   "in_standard_filter": 1,
+   "label": "Next Due Date"
+  },
+  {
+   "fieldname": "alert_date",
+   "fieldtype": "Date",
+   "label": "Alert From Date"
+  },
+  {
+   "fieldname": "alert_mails",
+   "fieldtype": "Table MultiSelect",
+   "label": "Alert Mails",
+   "options": "Alert Mail"
+  },
+  {
+   "depends_on": "eval:doc.possibility_status == 'Renewable'",
+   "fieldname": "frequency_of_renewal_days",
+   "fieldtype": "Int",
+   "label": "Renewal Frequency(Days)"
+  },
+  {
+   "fieldname": "days_left",
+   "fieldtype": "Int",
+   "label": "Days Left",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Renewal Status",
+   "options": "\nActive\nExpired\nExpiring\nDue for Renewal\nNot Renewable\nUnlimited\nVacated",
+   "read_only": 1
+  },
+  {
+   "fieldname": "current_status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Current Status"
+  },
+  {
+   "fieldname": "today_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "\nActive\nExpiring\nExpired",
+   "read_only": 1
+  },
+  {
+   "fieldname": "attach_file",
+   "fieldtype": "Attach",
+   "label": "Attach File"
+  },
+  {
+   "fieldname": "custodian_information_section",
+   "fieldtype": "Section Break",
+   "label": "Custodian Information"
+  },
+  {
+   "fieldname": "custodian",
+   "fieldtype": "Link",
+   "label": "Custodian ID",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "custodian.employee_name",
+   "fetch_if_empty": 1,
+   "fieldname": "custodian_name",
+   "fieldtype": "Data",
+   "label": "Custodian Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "attach",
+   "fieldtype": "Attach",
+   "label": "Attach"
+  },
+  {
+   "fetch_from": "custodian.custom_civil_id_number",
+   "fetch_if_empty": 1,
+   "fieldname": "custodian_resident_qid_number",
+   "fieldtype": "Data",
+   "label": "Custodian Civil ID Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_vilz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "custodian.person_to_be_contacted",
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sponsor_company",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Sponsor Company",
+   "options": "Sponsor Company"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-10 16:27:28.140666",
+ "modified_by": "Administrator",
+ "module": "Taihan",
+ "name": "Legal Compliance Monitor",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

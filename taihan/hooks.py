@@ -73,11 +73,17 @@ app_license = "mit"
 # Jinja
 # ----------
 
-# add methods and filters to jinja environment
-# jinja = {
-# 	"methods": "taihan.utils.jinja_methods",
+# add methods and filters to jinja environmentS
+jinja = {
+    "methods": [
+		"taihan.custom.job_card_print",
+		"taihan.custom.work_order_print",
+		"taihan.custom.get_batch_values",
+		"taihan.custom.get_final_batch",
+	]
+	# "methods": "taihan.utils.jinja_methods",
 # 	"filters": "taihan.utils.jinja_filters"
-# }
+}
 
 # Installation
 # ------------
@@ -137,12 +143,43 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
+
+doc_events = {
+	"Journal Entry": {
+		# "on_update": "method",
+		# "on_cancel": "method",
+		# "on_trash": "method"
+        "on_submit":["taihan.custom.update_expenses"],
+        "on_cancel":["taihan.custom.update_expenses_cancel"]
+	},
+	"Leave Application": {
+		"validate": ["taihan.custom.validate_leave_application","taihan.custom.validate_hajj_leave","taihan.custom.validate_umrah_leave_la"],
+	},
+	"Quotation":{
+		"validate": "taihan.custom.quotation_notification",
+		"before_submit": "taihan.custom.quotation_notification_before_submit",
+		"before_save":"taihan.custom.update_naming_series_quotation"
+	},
+	"Material Request":{
+     "on_submit":"taihan.custom.send_alert_mail_rol",
+    #  "validate":"taihan.custom.send_alert_mail_rol"
+    },
+	"Cost Estimation":{
+		"validate":"taihan.custom.update_values_cost_estimation"
+     },
+ 	"Request for Quotation":{
+     "on_submit":"taihan.custom.send_rfq_pdf"
+    },
+	"Quality Inspection":{
+		"after_insert":"taihan.custom.update_barcode"
+	},
+	
+	
+
+}
+
+# override_doctype_class = {
+#     "Leave Application":"taihan.overrides.CustomLeaveApplication"
 # }
 
 # Scheduled Tasks

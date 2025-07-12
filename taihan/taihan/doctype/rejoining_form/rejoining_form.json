@@ -1,0 +1,258 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "Re-Joining Form-.#####",
+ "creation": "2025-01-10 14:59:42.004813",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "leave_application",
+  "column_break_pzj2",
+  "status",
+  "employee_details_section",
+  "emp_no",
+  "employee_name",
+  "designation",
+  "department",
+  "hod",
+  "column_break_6lok",
+  "resident_id_number",
+  "date_of_joining",
+  "company",
+  "grade",
+  "request_details_section",
+  "start",
+  "end",
+  "column_break_6a81",
+  "re_join",
+  "total_leave_in_days",
+  "nature_of_leave",
+  "section_break_s6eg",
+  "re_joining_date",
+  "late_joining_in_days",
+  "column_break_33qb",
+  "reporting_date",
+  "custom_reason",
+  "section_break_scmz",
+  "eid_holidays",
+  "remarks",
+  "amended_from",
+  "cancellation_remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "leave_application",
+   "fieldtype": "Link",
+   "label": "Leave Application",
+   "options": "Leave Application",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_pzj2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nRequested\nInitiated\nCompleted\nHold\nRejected",
+   "read_only": 1
+  },
+  {
+   "fieldname": "employee_details_section",
+   "fieldtype": "Section Break",
+   "label": "Employee Details"
+  },
+  {
+   "fieldname": "emp_no",
+   "fieldtype": "Data",
+   "label": "Employee ID",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "leave_application.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Read Only",
+   "label": "Employee Name"
+  },
+  {
+   "fieldname": "designation",
+   "fieldtype": "Read Only",
+   "label": "Designation"
+  },
+  {
+   "fetch_from": "leave_application.department",
+   "fieldname": "department",
+   "fieldtype": "Read Only",
+   "label": "Department"
+  },
+  {
+   "fieldname": "column_break_6lok",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "resident_id_number",
+   "fieldtype": "Read Only",
+   "label": "Resident ID Number(QID)"
+  },
+  {
+   "fieldname": "date_of_joining",
+   "fieldtype": "Read Only",
+   "label": "Date of Joining"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Read Only",
+   "label": "Company / Division"
+  },
+  {
+   "fieldname": "grade",
+   "fieldtype": "Data",
+   "label": "Grade"
+  },
+  {
+   "fieldname": "request_details_section",
+   "fieldtype": "Section Break",
+   "label": "Request Details"
+  },
+  {
+   "fieldname": "start",
+   "fieldtype": "Date",
+   "label": "Start of Leave Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "end",
+   "fieldtype": "Date",
+   "label": "End of Leave Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_6a81",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_leave_in_days",
+   "fieldtype": "Read Only",
+   "label": "Total Leave in Days",
+   "read_only": 1
+  },
+  {
+   "fieldname": "nature_of_leave",
+   "fieldtype": "Link",
+   "label": "Nature of Leave",
+   "options": "Leave Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "re_join",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Re Joining Date",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.re_join",
+   "fieldname": "section_break_s6eg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "re_joining_date",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "label": "Re Joining Date"
+  },
+  {
+   "fieldname": "late_joining_in_days",
+   "fieldtype": "Data",
+   "label": "Late Joining in Days",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_33qb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reporting_date",
+   "fieldtype": "Date",
+   "label": "Reporting Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_scmz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "eid_holidays",
+   "fieldtype": "HTML",
+   "hidden": 1,
+   "options": "<b>REMARKS :</b> EXCLUDING 3 DAYS EID HOLIDAYS"
+  },
+  {
+   "depends_on": "eval:doc.late_joining_in_days>0",
+   "fieldname": "custom_reason",
+   "fieldtype": "Small Text",
+   "label": "Reason"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Rejoining Form",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "hod",
+   "fieldtype": "Check",
+   "label": "HOD",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.remarks",
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Rejection Remarks",
+   "mandatory_depends_on": "eval:doc.selected_workflow_action == \"Reject\"",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "cancellation_remarks",
+   "fieldtype": "Small Text",
+   "label": "Cancellation Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-02-05 16:31:02.112031",
+ "modified_by": "Administrator",
+ "module": "Taihan",
+ "name": "Rejoining Form",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

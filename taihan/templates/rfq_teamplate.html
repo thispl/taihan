@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="pdfkit-orientation" content="portrait" />
+    <meta name="page-size" content="A4" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Chonburi&display=swap');
+
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .divider:before,
+        .divider:after {
+            content: "";
+            flex: 1;
+            border-bottom: 2px solid red;
+            margin: auto;
+        }
+
+        .red-box {
+            background-color: #0f1568;
+            padding: 5px;
+            color: white;
+            text-align: center;
+            width: 100%;
+            max-width: 255px;
+            font-size: 14px;
+        }
+
+        .line {
+            position: relative;
+            padding-left: 15rem;
+        }
+
+        .line:after {
+            content: "";
+            border-bottom: 2.5px solid #0f1568;
+            position: absolute;
+            color: #0f1568;
+            top: 50%;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: -1;
+        }
+
+        .line span {
+            padding: 0 8px;
+            background-color: white;
+            color: #0f1568;
+            position: relative;
+        }
+
+        .container {
+            width: 100%;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        .row {
+            display: flex;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .col-xs-6, .col-xs-7, .col-xs-5 {
+            flex: 1;
+            padding: 5px;
+        }
+
+        .col-xs-7 {
+            flex: 2;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+
+        .table, .table th, .table td {
+            border: 1px solid #0f1568;
+        }
+
+        .table th, .table td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        .table td {
+            text-align: center;
+        }
+
+        .col-xs-5 .table {
+            margin-top: 0;
+        }
+
+        .red-box {
+            margin-bottom: 10px;
+        }
+
+        .altercolor:nth-child(odd) {
+            background-color: #EAE5E4;
+        }
+    </style>
+</head>
+<body>
+    <header id="header-html"></header>
+    <div class="container">
+        <table style="width: 100%; border: none;">
+            <tr>
+                <!-- Logo -->
+                <td style="width: 50%; text-align: left;">
+                    <img src="/private/files/Taihan Kuwait logo1_page-0001 (1).jpg" width="200px">
+                </td>
+                <!-- Address -->
+                <td style="width: 50%; text-align: left;">
+                    <p style="font-size:16px;color:#0f1568;font-family:Arial;font-weight:bold">Taihan Kuwait Fiber Optic Cable</p>
+                    <p style="font-size:10px;">{{ address.address_line1 or '' }}</p>
+                    <p style="font-size:10px;">{{ address.address_line2 or '' }}</p>
+                    <p style="font-size:10px;">{{ address.city or '' }}</p>
+                    {% if address.phone %}
+                        <p style="font-size:10px;">Phone: {{ address.phone or '' }}</p>
+                    {% endif %}
+                    {% if address.email_id %}
+                        <p style="font-size:10px;">Email: {{ address.email_id or '' }}</p>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <br>
+    <div class="line" style="font-size:20px; color:#0f1568; font-family:'Chonburi', Arial, sans-serif; font-weight:bold;text-align:left">
+        <span>Material Request</span>
+    </div>
+    
+    <div class="container">
+        <table style="width: 100%; border: none; margin-top: 15px;">
+            <tr>
+                <td style="width: 50%; vertical-align: top;">
+                    <h3 style="font-size:14px;font-family: Verdana, sans-serif;">Material Request To:</h3>
+                    <p style="font-size:10px;">{{ supplier or '' }}</p>
+                    <p style="font-size:10px;">{{ supplier_email or '' }}</p>
+                </td>
+                <td style="width: 50%; vertical-align: top; text-align: right;">
+                    <div class="red-box" nowrap>{{ doc.name }}</div>
+                    <table class="table table-bordered" style="width:265px; margin-top: 5px;">
+                        <tr>
+                            <td style="border-color:#0f1568">Order Date</td>
+                            <td style="border-color:#0f1568">{{ doc.get_formatted("transaction_date") }}</td>
+                        </tr>
+                        <tr>
+                            <td style="border-color:#0f1568">Required Date</td>
+                            <td style="border-color:#0f1568">{{ doc.get_formatted("schedule_date") }}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    
+    <div class="row">
+        <div class="col-xs-12">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th style="border-color:#0f1568; background-color: #0f1568; color: white;">No</th>
+                        <th style="border-color:#0f1568; background-color: #0f1568; color: white;" width="24%">Item</th>
+                        <th style="border-color:#0f1568; background-color: #0f1568; color: white;">Item Name</th>
+                        <th style="border-color:#0f1568; background-color: #0f1568; color: white;">UOM</th>
+                        <th style="border-color:#0f1568; background-color: #0f1568; color: white;">Total Qty</th>
+                    </tr>
+                </thead>
+                {% for row in doc.items %}
+                <tr>
+                    <td style="border-color:#0f1568">{{ row.idx }}</td>
+                    <td style="border-color:#0f1568">{{ row.item_code }}</td>
+                    <td style="border-color:#0f1568">{{ row.description }}</td>
+                    <td style="border-color:#0f1568">{{ row.stock_uom }}</td>
+                    <td style="text-align:right;border-color:#0f1568">{{ row.qty }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+    
+            {% if doc.custom_remarks %}
+            <br>
+            <table class="table table-bordered" style="font-size:10px;">
+                <tr>
+                    <td style="border-color:#0f1568"><b>Remarks</b><br>{{ doc.custom_remarks }}</td>
+                </tr>
+            </table>
+            {% endif %}
+            
+            <p style="font-size:12px">Thank you for having business with us!</p>
+            <br>
+        </div>
+    </div>
+</body>
+</html>

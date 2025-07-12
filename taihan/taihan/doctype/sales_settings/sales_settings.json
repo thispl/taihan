@@ -1,0 +1,41 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-17 17:27:22.581940",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "quotation_discount"
+ ],
+ "fields": [
+  {
+   "fieldname": "quotation_discount",
+   "fieldtype": "Table",
+   "label": "Quotation Discount",
+   "options": "Quotation Discount"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-01-17 17:27:54.658637",
+ "modified_by": "Administrator",
+ "module": "Taihan",
+ "name": "Sales Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

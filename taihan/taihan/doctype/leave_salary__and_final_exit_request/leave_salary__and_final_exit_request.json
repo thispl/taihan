@@ -1,0 +1,291 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "TAI/HRA/01/.####",
+ "creation": "2025-01-10 13:49:45.924573",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "type_of_request",
+  "status",
+  "column_break_h0do",
+  "leave_application",
+  "rejoining_date",
+  "section_break_4",
+  "employee_number",
+  "employee_name",
+  "grade",
+  "joining_date",
+  "sponsor_company",
+  "designation",
+  "column_break_jmiy",
+  "request_date",
+  "department",
+  "company",
+  "resident_id_numberqid_number",
+  "hod",
+  "ticket_required",
+  "other_details_section",
+  "leave_start_date",
+  "column_break_h0gw",
+  "leave_end_date",
+  "column_break_yitp",
+  "leave_details_section",
+  "last_rejoin_date",
+  "column_break_0fiv",
+  "last_leave_salary_received_date",
+  "column_break_8slp",
+  "last_date_of_service",
+  "column_break_zkqs",
+  "total_leave_taken",
+  "remarks_section_section",
+  "hod_remarks",
+  "hr_manager_remarks",
+  "amended_from",
+  "cancellation_remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "type_of_request",
+   "fieldtype": "Select",
+   "label": "Type of Request",
+   "options": "\nAnnual Vacation\nLeave Salary Encashment\nIndemnity"
+  },
+  {
+   "fieldname": "column_break_h0do",
+   "fieldtype": "Column Break",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval:doc.type_of_request == \"Annual Vacation\"",
+   "fieldname": "leave_application",
+   "fieldtype": "Link",
+   "label": "Leave Application",
+   "options": "Leave Application"
+  },
+  {
+   "depends_on": "eval:doc.type_of_request == \"Annual Vacation\"",
+   "fieldname": "rejoining_date",
+   "fieldtype": "Date",
+   "label": "Rejoining Date "
+  },
+  {
+   "depends_on": "eval:doc.type_of_request",
+   "fieldname": "section_break_4",
+   "fieldtype": "Section Break",
+   "label": "Employee Details"
+  },
+  {
+   "fieldname": "employee_number",
+   "fieldtype": "Link",
+   "label": "Employee Number",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "employee_number.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name"
+  },
+  {
+   "fetch_from": "employee_number.grade",
+   "fieldname": "grade",
+   "fieldtype": "Data",
+   "label": "Grade"
+  },
+  {
+   "fetch_from": "employee_number.date_of_joining",
+   "fieldname": "joining_date",
+   "fieldtype": "Date",
+   "label": "Joining Date"
+  },
+  {
+   "fieldname": "sponsor_company",
+   "fieldtype": "Data",
+   "label": "Sponsor Company"
+  },
+  {
+   "fetch_from": "employee_number.designation",
+   "fieldname": "designation",
+   "fieldtype": "Data",
+   "label": "Designation"
+  },
+  {
+   "fieldname": "column_break_jmiy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "request_date",
+   "fieldtype": "Date",
+   "label": "Request Date"
+  },
+  {
+   "fetch_from": "employee_number.department",
+   "fieldname": "department",
+   "fieldtype": "Data",
+   "label": "Department"
+  },
+  {
+   "fetch_from": "employee_number.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "resident_id_numberqid_number",
+   "fieldtype": "Data",
+   "label": "Resident ID Number(QID Number)"
+  },
+  {
+   "default": "0",
+   "fieldname": "hod",
+   "fieldtype": "Check",
+   "label": "HOD"
+  },
+  {
+   "depends_on": "eval:doc.type_of_request == \"Annual Vacation\"",
+   "fieldname": "ticket_required",
+   "fieldtype": "Select",
+   "label": "Ticket Required"
+  },
+  {
+   "depends_on": "eval:doc.type_of_request == \"Annual Vacation\"",
+   "fieldname": "other_details_section",
+   "fieldtype": "Section Break",
+   "label": "Other Details"
+  },
+  {
+   "depends_on": "eval:doc.type_of_request == \"Annual Vacation\"",
+   "fieldname": "leave_start_date",
+   "fieldtype": "Date",
+   "label": "Leave Start Date "
+  },
+  {
+   "fieldname": "column_break_h0gw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.type_of_request == \"Annual Vacation\"",
+   "fieldname": "leave_end_date",
+   "fieldtype": "Date",
+   "label": "Leave End Date"
+  },
+  {
+   "fieldname": "column_break_yitp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.employee_number",
+   "fieldname": "leave_details_section",
+   "fieldtype": "Section Break",
+   "label": "Leave Details"
+  },
+  {
+   "fieldname": "last_rejoin_date",
+   "fieldtype": "Date",
+   "label": "Last Rejoin Date"
+  },
+  {
+   "fieldname": "column_break_0fiv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_leave_salary_received_date",
+   "fieldtype": "Date",
+   "label": "Last Leave Salary Received Date"
+  },
+  {
+   "fieldname": "column_break_8slp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_date_of_service",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Last Date of Service",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_zkqs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_leave_taken",
+   "fieldtype": "Data",
+   "label": "Total Leave taken"
+  },
+  {
+   "fieldname": "remarks_section_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks Section"
+  },
+  {
+   "depends_on": "eval:doc.workflow_state==\"Pending for HOD\"",
+   "fieldname": "hod_remarks",
+   "fieldtype": "Small Text",
+   "label": "HOD Remarks"
+  },
+  {
+   "depends_on": "eval:doc.workflow_state==\"Pending for HR Department\"",
+   "fieldname": "hr_manager_remarks",
+   "fieldtype": "Small Text",
+   "label": "HR Manager Remarks"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Leave Salary  and Final Exit Request",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "cancellation_remarks",
+   "fieldtype": "Small Text",
+   "label": "Cancellation Remarks"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "\nCompleted\nRejected"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-04-30 14:37:20.347012",
+ "modified_by": "Administrator",
+ "module": "Taihan",
+ "name": "Leave Salary  and Final Exit Request",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

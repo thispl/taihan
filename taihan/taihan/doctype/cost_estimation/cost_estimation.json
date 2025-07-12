@@ -1,0 +1,74 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "CE.#####",
+ "creation": "2025-05-02 16:36:19.643309",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_bp3k",
+  "posting_date",
+  "total_working_days",
+  "amended_from",
+  "cost_estimation_items"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_bp3k",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cost Estimation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "cost_estimation_items",
+   "fieldtype": "Table",
+   "label": "Cost Estimation Items",
+   "options": "Cost Estimation Items"
+  },
+  {
+   "fieldname": "total_working_days",
+   "fieldtype": "Float",
+   "label": "Total Working Days"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-05-17 12:12:10.016904",
+ "modified_by": "Administrator",
+ "module": "Taihan",
+ "name": "Cost Estimation",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,61 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-20 09:16:04.296303",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "report",
+  "date",
+  "to_date",
+  "download"
+ ],
+ "fields": [
+  {
+   "fieldname": "report",
+   "fieldtype": "Select",
+   "label": "Report",
+   "options": "\nCurrency Exchange Gain / Loss\nIn Process Testing Report"
+  },
+  {
+   "fieldname": "download",
+   "fieldtype": "Button",
+   "label": "Download"
+  },
+  {
+   "depends_on": "eval:doc.report==\"In Process Testing Report\"",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "depends_on": "eval:doc.report==\"In Process Testing Report\"",
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To date"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-04-23 15:12:22.474689",
+ "modified_by": "Administrator",
+ "module": "Taihan",
+ "name": "Report Dashboard",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

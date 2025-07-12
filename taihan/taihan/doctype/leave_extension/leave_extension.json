@@ -1,0 +1,215 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "EXTEN-.####",
+ "creation": "2025-01-13 07:22:57.966953",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "employee_name",
+  "department",
+  "company",
+  "resident_id_number",
+  "hod",
+  "column_break_bovf",
+  "designation",
+  "employee_grade",
+  "date_of_joining",
+  "resident_id_expiry_date",
+  "custom_rejoining",
+  "section_break_andm",
+  "from_date",
+  "extension_from_date",
+  "column_break_j1ez",
+  "to_date",
+  "extension_to_date",
+  "column_break_hgwz",
+  "leave_application",
+  "leave_type",
+  "total_no_of_days",
+  "section_break_befl",
+  "reason",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "employee.department",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fetch_from": "employee.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fetch_from": "employee.custom_residency_number",
+   "fieldname": "resident_id_number",
+   "fieldtype": "Data",
+   "label": "Resident ID Number"
+  },
+  {
+   "default": "0",
+   "fieldname": "hod",
+   "fieldtype": "Check",
+   "label": "HOD"
+  },
+  {
+   "fieldname": "column_break_bovf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation"
+  },
+  {
+   "fetch_from": "employee.grade",
+   "fieldname": "employee_grade",
+   "fieldtype": "Link",
+   "label": "Employee Grade",
+   "options": "Employee Grade"
+  },
+  {
+   "fieldname": "date_of_joining",
+   "fieldtype": "Date",
+   "label": "Date Of Joining"
+  },
+  {
+   "fieldname": "resident_id_expiry_date",
+   "fieldtype": "Date",
+   "label": "Resident ID Expiry Date"
+  },
+  {
+   "fieldname": "section_break_andm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "From Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "extension_from_date",
+   "fieldtype": "Date",
+   "label": "Extension From Date"
+  },
+  {
+   "fieldname": "column_break_j1ez",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "To Date",
+   "reqd": 1
+  },
+  {
+   "depends_on": "employee",
+   "fieldname": "extension_to_date",
+   "fieldtype": "Date",
+   "label": "Extension To Date"
+  },
+  {
+   "fieldname": "column_break_hgwz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "leave_application",
+   "fieldtype": "Link",
+   "label": "Leave Application",
+   "options": "Leave Application"
+  },
+  {
+   "fieldname": "total_no_of_days",
+   "fieldtype": "Data",
+   "label": "Total No of Days"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Leave Extension",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_befl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "employee",
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason"
+  },
+  {
+   "fieldname": "custom_rejoining",
+   "fieldtype": "Data",
+   "label": "Rejoining Form"
+  },
+  {
+   "fieldname": "leave_type",
+   "fieldtype": "Link",
+   "label": "Leave Type",
+   "options": "Leave Type",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-01-28 10:21:44.168129",
+ "modified_by": "Administrator",
+ "module": "Taihan",
+ "name": "Leave Extension",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

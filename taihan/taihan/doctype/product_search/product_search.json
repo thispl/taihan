@@ -1,0 +1,98 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-13 10:20:16.995153",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "column_break_xcru",
+  "norden_item_code",
+  "item_description",
+  "section_break_a3x7",
+  "html",
+  "perm",
+  "pod",
+  "html_3",
+  "html_4"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item Code",
+   "options": "Item"
+  },
+  {
+   "fieldname": "column_break_xcru",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "norden_item_code",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Norden Item Code",
+   "options": "Item"
+  },
+  {
+   "fieldname": "item_description",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Item Description",
+   "options": "Item"
+  },
+  {
+   "fieldname": "section_break_a3x7",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "html",
+   "fieldtype": "HTML",
+   "label": "HTML"
+  },
+  {
+   "fieldname": "perm",
+   "fieldtype": "HTML",
+   "label": "html1"
+  },
+  {
+   "fieldname": "pod",
+   "fieldtype": "HTML"
+  },
+  {
+   "depends_on": "eval:frappe.user.has_role(\"Purchase Manager\")",
+   "fieldname": "html_3",
+   "fieldtype": "HTML"
+  },
+  {
+   "depends_on": "eval:!frappe.user.has_role(\"Purchase Manager\")",
+   "fieldname": "html_4",
+   "fieldtype": "HTML"
+  }
+ ],
+ "hide_toolbar": 1,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-04-26 17:00:06.681397",
+ "modified_by": "Administrator",
+ "module": "Taihan",
+ "name": "Product Search",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
