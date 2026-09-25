@@ -1,0 +1,765 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "ITR.#####",
+ "creation": "2025-04-22 14:44:53.335151",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "details_tab",
+  "work_order",
+  "customer",
+  "po_date",
+  "item_to_manufacture",
+  "bom_no",
+  "production_id",
+  "type_of_mode",
+  "column_break_ohka",
+  "operation_name",
+  "sales_order",
+  "item_name",
+  "manufacturing_date",
+  "production_od",
+  "testing_date",
+  "kink_test",
+  "coloring_tab",
+  "column_break_dlvb",
+  "date",
+  "column_break_tadt",
+  "status",
+  "section_break_vuds",
+  "fiber_supplier_name",
+  "color",
+  "colored_fiber_id",
+  "fiber_grade",
+  "rub_test",
+  "winding",
+  "non_conformance_type",
+  "type",
+  "non_conformance_details",
+  "column_break_blfm",
+  "length_km",
+  "otdr_length__km",
+  "color1nm_actual",
+  "color1550nm_actual",
+  "color1625nm_actual",
+  "color_850nm_actual",
+  "color_1300nm_actual",
+  "testing_operator",
+  "shift",
+  "sec_coating_tab",
+  "fiber_count",
+  "colour_or_description",
+  "column_break_qxjb",
+  "loose_tube_id",
+  "sec_bobbin_no",
+  "section_break_mzql",
+  "otdr_no",
+  "sec_otdr_length",
+  "sec_prod_length",
+  "observation__km",
+  "sec_fiber_type",
+  "sec_tube_od_max",
+  "sec_tube_thick_min",
+  "sec_concen",
+  "sec_shift",
+  "sec_non_conformance",
+  "sec_type",
+  "sec_non_conformance_setails",
+  "column_break_fite",
+  "hold_length_m",
+  "sec_tube_od_min",
+  "sec_tube_id_mm",
+  "sec_tube_thick_max",
+  "sec_testing_operator",
+  "sec_staatus",
+  "stranding_tab",
+  "stranding_fiber_count",
+  "drum_no",
+  "stranding_otdr",
+  "strand_otdr_length",
+  "strand_pod_length",
+  "core_od_mm",
+  "frp_od_mm",
+  "starnd_shift",
+  "strand_non_conformance_type",
+  "stranding_type",
+  "strand_non_conformance_details",
+  "column_break_zsgx",
+  "core_id",
+  "core__description",
+  "stranding_hold",
+  "stranding_observation",
+  "wbt_size__mm",
+  "strand_testing_operator",
+  "strand_status",
+  "sheathing_tab",
+  "sheathing_fiber_count",
+  "sheathing_otdr",
+  "sheathing_otdr_length",
+  "sheathing_id",
+  "sheathing_drumn_no",
+  "sheathing_fiber_type",
+  "outer_end_top",
+  "sheathing_cable_od_min",
+  "ovality_in_3",
+  "sheathing_cable_thick_max",
+  "sheathing_testing_operator",
+  "sheathing_non_conformance_type",
+  "sheathing_type",
+  "sheathing_non_conformace_details",
+  "column_break_jcvg",
+  "observation_sheathing",
+  "hold_sheathing",
+  "cable_type",
+  "cable_description",
+  "inner_end_bottom",
+  "sheathing_prod_length",
+  "efl",
+  "sheathing_cable_od_max",
+  "sheathing_cable_thick_min",
+  "sheathing_concentricty",
+  "sheathing_shift",
+  "sheathing_status"
+ ],
+ "fields": [
+  {
+   "fieldname": "details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "label": "Work Order",
+   "options": "Work Order"
+  },
+  {
+   "fieldname": "item_to_manufacture",
+   "fieldtype": "Link",
+   "label": "Item To Manufacture",
+   "options": "Item"
+  },
+  {
+   "fieldname": "bom_no",
+   "fieldtype": "Link",
+   "label": "BOM No",
+   "options": "BOM"
+  },
+  {
+   "fieldname": "production_id",
+   "fieldtype": "Data",
+   "label": "Production ID"
+  },
+  {
+   "fieldname": "type_of_mode",
+   "fieldtype": "Select",
+   "label": "Type of Mode",
+   "options": "\nSingle Mode\nMulti Mode"
+  },
+  {
+   "fieldname": "kink_test",
+   "fieldtype": "Select",
+   "label": "Kink Test",
+   "options": "\nPass\nFail"
+  },
+  {
+   "fieldname": "column_break_ohka",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "operation_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Operation Name"
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name"
+  },
+  {
+   "fieldname": "manufacturing_date",
+   "fieldtype": "Date",
+   "label": "Manufacturing Date"
+  },
+  {
+   "fieldname": "production_od",
+   "fieldtype": "Data",
+   "label": "Production OD"
+  },
+  {
+   "fieldname": "testing_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Testing Date"
+  },
+  {
+   "fieldname": "coloring_tab",
+   "fieldtype": "Tab Break",
+   "label": "Coloring"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "column_break_dlvb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fetch_from": "sales_order.po_no",
+   "fieldname": "po_date",
+   "fieldtype": "Data",
+   "label": "Customer PO"
+  },
+  {
+   "fieldname": "section_break_vuds",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "fiber_supplier_name",
+   "fieldtype": "Link",
+   "label": "Fiber supplier Name",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "color",
+   "fieldtype": "Link",
+   "label": "Color",
+   "options": "Fiber Colour"
+  },
+  {
+   "fieldname": "colored_fiber_id",
+   "fieldtype": "Data",
+   "label": "Colored Fiber ID "
+  },
+  {
+   "fieldname": "fiber_grade",
+   "fieldtype": "Link",
+   "label": "Fiber Grade",
+   "options": "Fiber Grade"
+  },
+  {
+   "fieldname": "rub_test",
+   "fieldtype": "Select",
+   "label": "Rub Test",
+   "options": "\nOK\nNo"
+  },
+  {
+   "fieldname": "winding",
+   "fieldtype": "Select",
+   "label": "Winding",
+   "options": "\nOk\nNo"
+  },
+  {
+   "fieldname": "non_conformance_type",
+   "fieldtype": "Select",
+   "label": "Non Conformance",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:doc.non_conformance_type==\"Yes\"",
+   "fieldname": "type",
+   "fieldtype": "Link",
+   "label": "Non Conformance Type",
+   "options": "Non Conformance Type"
+  },
+  {
+   "depends_on": "eval:doc.non_conformance_type==\"Yes\"",
+   "fieldname": "non_conformance_details",
+   "fieldtype": "Small Text",
+   "label": "Non Conformance Details"
+  },
+  {
+   "fieldname": "column_break_blfm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "length_km",
+   "fieldtype": "Float",
+   "label": " Length (Km)"
+  },
+  {
+   "fieldname": "otdr_length__km",
+   "fieldtype": "Float",
+   "label": "OTDR Length  (Km)"
+  },
+  {
+   "depends_on": "eval:doc.type_of_mode==\"Single Mode\"",
+   "fieldname": "color1nm_actual",
+   "fieldtype": "Float",
+   "label": "1310nm Actual"
+  },
+  {
+   "depends_on": "eval:doc.type_of_mode==\"Single Mode\"",
+   "fieldname": "color1550nm_actual",
+   "fieldtype": "Float",
+   "label": "1550nm Actual"
+  },
+  {
+   "depends_on": "eval:doc.type_of_mode==\"Single Mode\"",
+   "fieldname": "color1625nm_actual",
+   "fieldtype": "Float",
+   "label": "1625nm Actual"
+  },
+  {
+   "fieldname": "testing_operator",
+   "fieldtype": "Data",
+   "label": "Testing Operator"
+  },
+  {
+   "fieldname": "shift",
+   "fieldtype": "Data",
+   "label": "Shift"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nOK\nOPTICAL\nPHYSICAL"
+  },
+  {
+   "depends_on": "eval:doc.operation_name==\"Buffering\"",
+   "fieldname": "sec_coating_tab",
+   "fieldtype": "Tab Break",
+   "label": "Sec. Coating"
+  },
+  {
+   "fieldname": "fiber_count",
+   "fieldtype": "Int",
+   "label": "Fiber Count"
+  },
+  {
+   "fieldname": "colour_or_description",
+   "fieldtype": "Data",
+   "label": "Colour or Description"
+  },
+  {
+   "fieldname": "column_break_qxjb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "loose_tube_id",
+   "fieldtype": "Data",
+   "label": "Loose tube ID "
+  },
+  {
+   "fieldname": "sec_bobbin_no",
+   "fieldtype": "Data",
+   "label": "Bobbin No"
+  },
+  {
+   "fieldname": "section_break_mzql",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "sec_otdr_length",
+   "fieldtype": "Float",
+   "label": "Otdr Length (Mtr)"
+  },
+  {
+   "fieldname": "sec_prod_length",
+   "fieldtype": "Float",
+   "label": "Prod Length (Mtr)"
+  },
+  {
+   "fieldname": "observation__km",
+   "fieldtype": "Float",
+   "label": "Observation  (KM)"
+  },
+  {
+   "fieldname": "sec_fiber_type",
+   "fieldtype": "Link",
+   "label": "Fiber Type",
+   "options": "Fiber Type"
+  },
+  {
+   "fieldname": "sec_tube_od_max",
+   "fieldtype": "Float",
+   "label": "Tube OD  (mm)-Max"
+  },
+  {
+   "fieldname": "sec_tube_thick_min",
+   "fieldtype": "Float",
+   "label": "Tube Thick  Min (mm)"
+  },
+  {
+   "fieldname": "sec_concen",
+   "fieldtype": "Float",
+   "label": "Concentricty >90%"
+  },
+  {
+   "fieldname": "sec_shift",
+   "fieldtype": "Data",
+   "label": "Shift"
+  },
+  {
+   "fieldname": "sec_non_conformance",
+   "fieldtype": "Select",
+   "label": "Non Conformance",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:doc.sec_non_conformance==\"Yes\"",
+   "fieldname": "sec_type",
+   "fieldtype": "Link",
+   "label": "Non Conformance Type",
+   "options": "Non Conformance Type"
+  },
+  {
+   "depends_on": "eval:doc.sec_non_conformance==\"Yes\"",
+   "fieldname": "sec_non_conformance_setails",
+   "fieldtype": "Small Text",
+   "label": "Non Conformance Details"
+  },
+  {
+   "fieldname": "column_break_fite",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "hold_length_m",
+   "fieldtype": "Float",
+   "label": "Hold Length (M)"
+  },
+  {
+   "fieldname": "sec_tube_od_min",
+   "fieldtype": "Float",
+   "label": "Tube OD  (mm)-Min"
+  },
+  {
+   "fieldname": "sec_tube_id_mm",
+   "fieldtype": "Float",
+   "label": "Tube ID  (mm)"
+  },
+  {
+   "fieldname": "sec_tube_thick_max",
+   "fieldtype": "Float",
+   "label": "Tube Thick  Max (mm)"
+  },
+  {
+   "fieldname": "sec_testing_operator",
+   "fieldtype": "Data",
+   "label": "Testing Operator"
+  },
+  {
+   "fieldname": "sec_staatus",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nOk\nOBSERVATION\nHOLD"
+  },
+  {
+   "depends_on": "eval:doc.operation_name==\"Stranding\"",
+   "fieldname": "stranding_tab",
+   "fieldtype": "Tab Break",
+   "label": "Stranding"
+  },
+  {
+   "fieldname": "stranding_fiber_count",
+   "fieldtype": "Int",
+   "label": "Fiber Count"
+  },
+  {
+   "fieldname": "drum_no",
+   "fieldtype": "Data",
+   "label": "Drum No"
+  },
+  {
+   "fieldname": "strand_otdr_length",
+   "fieldtype": "Float",
+   "label": "OTDR Length  ( Mtr)"
+  },
+  {
+   "fieldname": "strand_pod_length",
+   "fieldtype": "Float",
+   "label": "Prod Length  ( Mtr)"
+  },
+  {
+   "fieldname": "core_od_mm",
+   "fieldtype": "Float",
+   "label": "Core OD (mm)"
+  },
+  {
+   "fieldname": "frp_od_mm",
+   "fieldtype": "Float",
+   "label": "FRP OD (mm)"
+  },
+  {
+   "fieldname": "starnd_shift",
+   "fieldtype": "Data",
+   "label": "Shift"
+  },
+  {
+   "fieldname": "strand_non_conformance_type",
+   "fieldtype": "Select",
+   "label": "Non Conformance",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:doc.strand_non_conformance_type==\"Yes\"",
+   "fieldname": "stranding_type",
+   "fieldtype": "Link",
+   "label": "Non Conformance Type",
+   "options": "Non Conformance Type"
+  },
+  {
+   "depends_on": "eval:doc.strand_non_conformance_type==\"Yes\"",
+   "fieldname": "strand_non_conformance_details",
+   "fieldtype": "Small Text",
+   "label": "Non Conformance Details"
+  },
+  {
+   "fieldname": "column_break_zsgx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "core_id",
+   "fieldtype": "Data",
+   "label": "Core ID"
+  },
+  {
+   "fetch_from": "core_id.core_description",
+   "fieldname": "core__description",
+   "fieldtype": "Small Text",
+   "label": "Core  Description"
+  },
+  {
+   "fieldname": "stranding_hold",
+   "fieldtype": "Float",
+   "label": "Hold Length(Mtr)"
+  },
+  {
+   "fieldname": "stranding_observation",
+   "fieldtype": "Float",
+   "label": "Observation  (KM)"
+  },
+  {
+   "fieldname": "wbt_size__mm",
+   "fieldtype": "Float",
+   "label": "WBT Size  (mm)"
+  },
+  {
+   "fieldname": "strand_testing_operator",
+   "fieldtype": "Data",
+   "label": "Testing Operator"
+  },
+  {
+   "fieldname": "strand_status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nOk\nOBSERVATION\nHOLD"
+  },
+  {
+   "depends_on": "eval:doc.operation_name==\"Jacketing\"",
+   "fieldname": "sheathing_tab",
+   "fieldtype": "Tab Break",
+   "label": "Sheathing"
+  },
+  {
+   "fieldname": "sheathing_fiber_count",
+   "fieldtype": "Int",
+   "label": "Fiber Count"
+  },
+  {
+   "fieldname": "sheathing_otdr_length",
+   "fieldtype": "Float",
+   "label": "Otdr Length (Mtr)"
+  },
+  {
+   "fieldname": "sheathing_id",
+   "fieldtype": "Data",
+   "label": "Sheathing ID"
+  },
+  {
+   "fieldname": "sheathing_drumn_no",
+   "fieldtype": "Data",
+   "label": "Drum No."
+  },
+  {
+   "fieldname": "sheathing_fiber_type",
+   "fieldtype": "Link",
+   "label": "Fiber Type",
+   "options": "Fiber Type"
+  },
+  {
+   "fieldname": "outer_end_top",
+   "fieldtype": "Float",
+   "label": "Outer End (Top)"
+  },
+  {
+   "fieldname": "sheathing_cable_od_min",
+   "fieldtype": "Float",
+   "label": "Cable OD Min"
+  },
+  {
+   "fieldname": "ovality_in_3",
+   "fieldtype": "Data",
+   "label": "Ovality in (<3%)"
+  },
+  {
+   "fieldname": "sheathing_cable_thick_max",
+   "fieldtype": "Float",
+   "label": "Cable Thick Max (MM)"
+  },
+  {
+   "fieldname": "sheathing_testing_operator",
+   "fieldtype": "Data",
+   "label": "Testing Operator"
+  },
+  {
+   "fieldname": "sheathing_non_conformance_type",
+   "fieldtype": "Select",
+   "label": "Non Conformance",
+   "options": "\nYes\nNo"
+  },
+  {
+   "depends_on": "eval:doc.sheathing_non_conformance_type==\"Yes\"",
+   "fieldname": "sheathing_type",
+   "fieldtype": "Link",
+   "label": "Non Conformance Type",
+   "options": "Non Conformance Type"
+  },
+  {
+   "depends_on": "eval:doc.sheathing_non_conformance_type==\"Yes\"",
+   "fieldname": "sheathing_non_conformace_details",
+   "fieldtype": "Small Text",
+   "label": "Non Conformance Details"
+  },
+  {
+   "fieldname": "column_break_jcvg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "observation_sheathing",
+   "fieldtype": "Float",
+   "label": "Observation  (KM)"
+  },
+  {
+   "fieldname": "hold_sheathing",
+   "fieldtype": "Float",
+   "label": "Hold Length (Mtr)"
+  },
+  {
+   "fieldname": "cable_description",
+   "fieldtype": "Small Text",
+   "label": "Cable Description"
+  },
+  {
+   "fieldname": "inner_end_bottom",
+   "fieldtype": "Float",
+   "label": "Inner End (Bottom)"
+  },
+  {
+   "fieldname": "sheathing_prod_length",
+   "fieldtype": "Float",
+   "label": "Prod Length (Mtr)"
+  },
+  {
+   "fieldname": "efl",
+   "fieldtype": "Int",
+   "label": "EFL"
+  },
+  {
+   "fieldname": "sheathing_cable_od_max",
+   "fieldtype": "Float",
+   "label": "Cable OD Max"
+  },
+  {
+   "fieldname": "sheathing_cable_thick_min",
+   "fieldtype": "Float",
+   "label": "Cable Thick  Min (MM)"
+  },
+  {
+   "fieldname": "sheathing_concentricty",
+   "fieldtype": "Data",
+   "label": "Concentricty (>90%)"
+  },
+  {
+   "fieldname": "sheathing_shift",
+   "fieldtype": "Data",
+   "label": "Shift"
+  },
+  {
+   "fieldname": "sheathing_status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nOK\nHOLD"
+  },
+  {
+   "fieldname": "otdr_no",
+   "fieldtype": "Data",
+   "label": "OTDR No"
+  },
+  {
+   "fieldname": "stranding_otdr",
+   "fieldtype": "Data",
+   "label": "OTDR No"
+  },
+  {
+   "fieldname": "sheathing_otdr",
+   "fieldtype": "Data",
+   "label": "OTDR No"
+  },
+  {
+   "fieldname": "cable_type",
+   "fieldtype": "Link",
+   "label": "Cable Type",
+   "options": "Cable Type"
+  },
+  {
+   "fieldname": "column_break_tadt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.type_of_mode==\"Multi Mode\"",
+   "fieldname": "color_850nm_actual",
+   "fieldtype": "Float",
+   "label": "850nm Actual"
+  },
+  {
+   "depends_on": "eval:doc.type_of_mode==\"Multi Mode\"",
+   "fieldname": "color_1300nm_actual",
+   "fieldtype": "Float",
+   "label": "1300nm Actual"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-08-08 14:21:21.919007",
+ "modified_by": "Administrator",
+ "module": "Taihan",
+ "name": "Inprocess Testing Report",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

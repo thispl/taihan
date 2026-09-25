@@ -11,7 +11,7 @@ frappe.query_reports["Attendance Register"] = {
 			on_change: function () {
 				var from_date = frappe.query_report.get_filter_value('from_date')
 				frappe.call({
-					method: "taihan.custom.get_to_date",
+					method: "taihan.taihan.shift_schedule.get_to_date",
 					args: {
 						from_date: from_date
 					},

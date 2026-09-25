@@ -62,7 +62,7 @@ frappe.ui.form.on('Rejoining Form', {
                         d.hide();
         
                         frappe.call({
-                            method: "taihan.custom.set_cancellation_remarks",
+                            method: "taihan.taihan.rejoining_form.set_cancellation_remarks",
                             args: {
                                 doctype: frm.doc.doctype,
                                 docname: frm.doc.name,
@@ -86,7 +86,7 @@ frappe.ui.form.on('Rejoining Form', {
                     if (!remarks) {
                         frappe.msgprint(__('Cancellation remarks are required before cancelling. The document will remain in Approved state.'));   
                         frappe.call({
-                            method: "taihan.custom.reset_to_approved",  // Backend method to reset state
+                            method: "taihan.taihan.rejoining_form.reset_to_approved",  // Backend method to reset state
                             args: {
                                 doctype: frm.doc.doctype,
                                 docname: frm.doc.name

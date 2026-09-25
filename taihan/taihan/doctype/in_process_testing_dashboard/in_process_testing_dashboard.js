@@ -1,14 +1,14 @@
 // Copyright (c) 2025, Teampro and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("Report Dashboard", {
+frappe.ui.form.on("In Process Testing Dashboard", {
     // refresh(frm) {
     //     console.log(frm.doc.report)
     // },
     download(frm) {
         if (frm.doc.report == 'Currency Exchange Gain / Loss') {
                 console.log("outside")
-                var path = 'taihan.taihan.doctype.report_dashboard.profit_loss_report.download'
+                var path = 'taihan.taihan.doctype.in_process_testing_dashboard.profit_loss_report.download'
                 if (path) {
                     window.location.href = repl(frappe.request.url +
                         '?cmd=%(cmd)s&%(args)s', {
@@ -21,9 +21,8 @@ frappe.ui.form.on("Report Dashboard", {
             frappe.msgprint("Kindly enter the From date and To date")
         }
         else if(frm.doc.report=="In Process Testing Report" && frm.doc.date && frm.doc.to_date){
-            console.log("inside")
             frappe.call({
-                method: "taihan.taihan.doctype.report_dashboard.inprocess_report.download_excel",
+                method: "taihan.taihan.doctype.in_process_testing_dashboard.inprocess_report.download_excel",
                 args: {
                     date:frm.doc.date,
                     to_date:frm.doc.to_date
@@ -41,6 +40,17 @@ frappe.ui.form.on("Report Dashboard", {
                     }
                 }
             });
+        }
+        else if (frm.doc.report == 'Delivery Details Report') {
+                console.log("outside")
+                var path = 'taihan.taihan.doctype.in_process_testing_dashboard.profit_loss_report.export_delivery_report'
+                if (path) {
+                    window.location.href = repl(frappe.request.url +
+                        '?cmd=%(cmd)s&%(args)s', {
+                        cmd: path,
+                    });
+            }
+            
         }
     }
 });

@@ -224,3 +224,172 @@ def check_er():
 	converted_amount = round((amount * exchange_rate), 2)
 	print(converted_amount)
 	return (billed_amount - converted_amount) if payment_type == "Pay" else (converted_amount - billed_amount)
+
+
+
+
+
+import frappe
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from io import BytesIO
+
+@frappe.whitelist()
+def export_delivery_report():
+
+	wb = Workbook()
+	ws = wb.active
+	ws.title = "Delivery Details"
+
+	# Title
+	ws.merge_cells("A1:R1")
+	ws["A1"] = "Delivery Details"
+	ws["A1"].font = Font(size=18, bold=True)
+	ws["A1"].alignment = Alignment(horizontal="center")
+	thin_border = Border(
+			left=Side(style="thin"),
+			right=Side(style="thin"),
+			top=Side(style="thin"),
+			bottom=Side(style="thin")
+		)
+
+	headers = [
+		"Date Of Packing",
+		"SO or PO No.",
+		"Customer Name",
+		"Packing List No.",
+		"Invoice No",
+		"Cable Description",
+		"Cable Drum No.",
+		"Net Weight (Kg)",
+		"Gross Weight (Kg)",
+		"Drum Size (mm)",
+		"Total Length",
+		"PO Amount in (KD)",
+		"Advance Payment",
+		"Balance Amount in (KD)",
+		"FAT Date",
+		"Inspection By",
+		"Dispatch Date",
+		"Drum Received"
+	]
+
+	header_fill = PatternFill(
+		start_color="8DB4E2",
+		end_color="8DB4E2",
+		fill_type="solid"
+	)
+
+	for col_num, header in enumerate(headers, start=1):
+		cell = ws.cell(row=2, column=col_num)
+		cell.value = header
+		cell.font = Font(bold=True)
+		cell.fill = header_fill
+		cell.alignment = Alignment(horizontal="center")
+
+	row = 3
+
+	delivery_notes = frappe.get_all(
+		"Delivery Note",
+		fields=["name", "customer", "posting_date"]
+	)
+
+	for dn in delivery_notes:
+
+		doc = frappe.get_doc("Delivery Note", dn.name)
+
+		if not doc.custom_dn_packing_list:
+			continue
+
+		invoice_no = ""
+		sales_order = ""
+
+		if doc.items:
+			invoice_no = doc.items[0].get("against_sales_invoice", "")
+			sales_order = doc.items[0].get("against_sales_order", "")
+
+		po_amount = 0
+		if sales_order:
+			po_amount = frappe.db.get_value(
+				"Sales Order",
+				sales_order,
+				"grand_total"
+			) or 0
+		# Advance Payment against Sales Order
+		
+		advance_payment = 0
+		balance_amount = 0
+
+		if sales_order:
+			advance_payment = frappe.db.get_value(
+				"Sales Order",
+				sales_order,
+				"advance_paid"
+			) or 0
+
+		# Balance Amount
+		balance_amount = float(po_amount) - float(advance_payment)
+
+		for pack in doc.custom_dn_packing_list:
+
+			ws.cell(row=row, column=1).value = doc.posting_date
+			ws.cell(row=row, column=1).number_format = "DD-MM-YYYY"
+			ws.cell(row=row, column=2).value = sales_order
+			ws.cell(row=row, column=3).value = doc.customer
+			ws.cell(row=row, column=4).value = doc.name
+			ws.cell(row=row, column=5).value = invoice_no
+
+			ws.cell(row=row, column=6).value = pack.get("description", "")
+			ws.cell(row=row, column=7).value = pack.get("drum_no", "")
+			ws.cell(row=row, column=8).value = pack.get("net_weightkg", "")
+			ws.cell(row=row, column=9).value = pack.get("gross_weightkg", "")
+			ws.cell(row=row, column=10).value = pack.get("drum_sizemm", "")
+			ws.cell(row=row, column=11).value = pack.get("total_length_mtr", "")
+
+			ws.cell(row=row, column=12).value = po_amount
+			ws.cell(row=row, column=13).value = advance_payment
+			ws.cell(row=row, column=14).value = balance_amount
+			ws.cell(row=row, column=15).value = doc.custom_fat_date or ""
+			ws.cell(row=row, column=16).value = doc.custom_inspected_by or ""
+			ws.cell(row=row, column=17).value = doc.posting_date
+			ws.cell(row=row, column=17).number_format = "DD-MM-YYYY"
+			ws.cell(row=row, column=18).value = doc.custom_drum_received or ""
+
+			for col in range(1, 19):  
+				cell = ws.cell(row=row, column=col)
+				cell.alignment = Alignment(horizontal="center", vertical="center")
+				cell.border = thin_border
+
+			row += 1
+
+	# Column Width Adjustment
+	column_widths = {
+		"A": 15,
+		"B": 18,
+		"C": 35,
+		"D": 20,
+		"E": 18,
+		"F": 30,
+		"G": 18,
+		"H": 15,
+		"I": 15,
+		"J": 15,
+		"K": 15,
+		"L": 18,
+		"M": 18,
+		"N": 20,
+		"O": 15,
+		"P": 18,
+		"Q": 18,
+		"R": 15
+	}
+
+	for col, width in column_widths.items():
+		ws.column_dimensions[col].width = width
+
+	output = BytesIO()
+	wb.save(output)
+
+	frappe.response["filename"] = "Delivery_Details.xlsx"
+	frappe.response["filecontent"] = output.getvalue()
+	frappe.response["type"] = "download"

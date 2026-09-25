@@ -74,17 +74,17 @@ def get_coloring_data(date,to_date):
     ]
 
     query = """
-        SELECT `date`, `fiber_supplier_name`, `po_date`, `color`, `colored_fiber_id`, `fiber_grade`, `length_km`, 
+        SELECT `testing_date`, `fiber_supplier_name`, `po_date`, `color`, `colored_fiber_id`, `fiber_grade`, `length_km`, 
                `otdr_length__km` as otdr_length_km, `color1nm_actual`, `color1550nm_actual`, `color1625nm_actual`, `rub_test`, `winding`, 
                `testing_operator`, `shift`, `non_conformance_type`, `non_conformance_details`, `status`
         FROM `tabInprocess Testing Report`
-        WHERE date BETWEEN %s AND %s
+        WHERE testing_date BETWEEN %s AND %s
     """
     results = frappe.db.sql(query, (date,to_date), as_dict=True) or []
 
     data = []
     for row in results:
-        formatted_date = row.get("date").strftime("%d-%m-%Y") if row.get("date") else ""
+        formatted_date = row.get("testing_date").strftime("%d-%m-%Y") if row.get("testing_date") else ""
         data.append([
             formatted_date,
             row.get("fiber_supplier_name"),
@@ -116,18 +116,18 @@ def get_sec_caoting_data(date,to_date):
     ]
 
     query = """
-        SELECT `date`, `customer`, `sales_order`, `fiber_count`, `colour_or_description`, `loose_tube_id`, `sec_bobbin_no`, 
+        SELECT `testing_date`, `customer`, `sales_order`, `fiber_count`, `colour_or_description`, `loose_tube_id`, `sec_bobbin_no`, 
                `sec_prod_length`, `sec_otdr_length`, `sec_fiber_type`, `sec_tube_od_min`, `sec_tube_od_max`, `sec_tube_id_mm`, 
                `sec_tube_thick_min`, `sec_tube_thick_max`, `sec_concen`, `sec_testing_operator`, `sec_shift`,`sec_non_conformance`,
                `sec_non_conformance_setails`,`sec_staatus`
         FROM `tabInprocess Testing Report`
-        WHERE date BETWEEN %s AND %s
+        WHERE testing_date BETWEEN %s AND %s AND operation_name="Buffering"
     """
     results = frappe.db.sql(query, (date,to_date), as_dict=True) or []
 
     data = []
     for row in results:
-        formatted_date = row.get("date").strftime("%d-%m-%Y") if row.get("date") else ""
+        formatted_date = row.get("testing_date").strftime("%d-%m-%Y") if row.get("testing_date") else ""
         data.append([
             formatted_date,
             row.get("customer"),
@@ -144,7 +144,7 @@ def get_sec_caoting_data(date,to_date):
             row.get("sec_tube_id_mm"),
             row.get("sec_tube_thick_min"),
             row.get("sec_tube_thick_max"),
-            row.get("sec_concen"),
+            round(row.get("sec_concen"),2),
             row.get("sec_testing_operator"),
             row.get("sec_shift"),
             row.get("sec_non_conformance"),
@@ -162,17 +162,17 @@ def get_stranding_data(date,to_date):
     ]
 
     query = """
-        SELECT `date`, `customer`, `sales_order`, `stranding_fiber_count`, `core__description`, `core_id`, `drum_no`, 
+        SELECT `testing_date`, `customer`, `sales_order`, `stranding_fiber_count`, `core__description`, `core_id`, `drum_no`, 
                `strand_pod_length`, `strand_otdr_length`, `core_od_mm`, `wbt_size__mm`, `frp_od_mm`, `strand_testing_operator`, 
                `starnd_shift`, `strand_non_conformance_type`, `strand_non_conformance_details`, `strand_status`
         FROM `tabInprocess Testing Report`
-        WHERE date BETWEEN %s AND %s
+        WHERE testing_date BETWEEN %s AND %s AND operation_name="Stranding"
     """
     results = frappe.db.sql(query, (date,to_date), as_dict=True) or []
 
     data = []
     for row in results:
-        formatted_date = row.get("date").strftime("%d-%m-%Y") if row.get("date") else ""
+        formatted_date = row.get("testing_date").strftime("%d-%m-%Y") if row.get("testing_date") else ""
         data.append([
             formatted_date,
             row.get("customer"),
@@ -188,7 +188,7 @@ def get_stranding_data(date,to_date):
             row.get("frp_od_mm"),
             row.get("strand_testing_operator"),
             row.get("starnd_shift"),
-            row.get("sec_shift"),
+            # row.get("sec_shift"),
             row.get("strand_non_conformance_type"),
             row.get("strand_non_conformance_details"),
             row.get("strand_status"),
@@ -205,18 +205,19 @@ def get_sheathing_data(date,to_date):
     ]
 
     query = """
-        SELECT `date`, `customer`, `sales_order`, `sheathing_fiber_count`, `cable_description`, `sheathing_id`, `sheathing_drumn_no`, 
+        SELECT `testing_date`, `customer`, `sales_order`, `sheathing_fiber_count`, `cable_description`, `sheathing_id`, `sheathing_drumn_no`, 
                `sheathing_fiber_type`, `inner_end_bottom`, `outer_end_top`, `sheathing_prod_length`, `sheathing_otdr_length`, `efl`, 
                `sheathing_cable_od_min`,`sheathing_cable_od_max`, `ovality_in_3`,`sheathing_cable_thick_min`, `sheathing_cable_thick_max`, `sheathing_concentricty`,`sheathing_testing_operator`,
                `sheathing_shift`,`sheathing_non_conformance_type`,`sheathing_non_conformace_details`,`sheathing_status`
         FROM `tabInprocess Testing Report`
-        WHERE date BETWEEN %s AND %s
+        WHERE testing_date BETWEEN %s AND %s AND operation_name="Jacketing"
     """
     results = frappe.db.sql(query, (date,to_date), as_dict=True) or []
 
     data = []
     for row in results:
-        formatted_date = row.get("date").strftime("%d-%m-%Y") if row.get("date") else ""
+        formatted_date = row.get("testing_date").strftime("%d-%m-%Y") if row.get("testing_date") else ""
+        value = row.get("sheathing_concentricty")
         data.append([
             formatted_date,
             row.get("customer"),
@@ -236,7 +237,7 @@ def get_sheathing_data(date,to_date):
             row.get("ovality_in_3"),
             row.get("sheathing_cable_thick_min"),
             row.get("sheathing_cable_thick_max"),
-            row.get("sheathing_concentricty"),
+            round(float(value if value is not None else 0), 2),
             row.get("sheathing_testing_operator"),
             row.get("sheathing_shift"),
             row.get("sheathing_non_conformance_type"),

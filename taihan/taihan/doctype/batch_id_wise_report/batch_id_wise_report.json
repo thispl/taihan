@@ -1,21 +1,24 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-02-20 09:16:04.296303",
+ "creation": "2025-09-22 15:07:31.832240",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "report",
-  "date",
+  "from_date",
+  "operation",
+  "download",
+  "column_break_769i",
   "to_date",
-  "download"
+  "jacketing_batch",
+  "track_download"
  ],
  "fields": [
   {
-   "fieldname": "report",
-   "fieldtype": "Select",
-   "label": "Report",
-   "options": "\nCurrency Exchange Gain / Loss\nIn Process Testing Report"
+   "fieldname": "operation",
+   "fieldtype": "Link",
+   "label": "Operation",
+   "options": "Operation"
   },
   {
    "fieldname": "download",
@@ -23,25 +26,37 @@
    "label": "Download"
   },
   {
-   "depends_on": "eval:doc.report==\"In Process Testing Report\"",
-   "fieldname": "date",
+   "fieldname": "from_date",
    "fieldtype": "Date",
-   "label": "From Date"
+   "label": "From date"
   },
   {
-   "depends_on": "eval:doc.report==\"In Process Testing Report\"",
+   "fieldname": "column_break_769i",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "to_date",
    "fieldtype": "Date",
-   "label": "To date"
+   "label": "To Date"
+  },
+  {
+   "fieldname": "jacketing_batch",
+   "fieldtype": "Data",
+   "label": "Jacketing Batch"
+  },
+  {
+   "fieldname": "track_download",
+   "fieldtype": "Button",
+   "label": "Download Tracking"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-04-23 15:12:22.474689",
+ "modified": "2026-08-08 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Taihan",
- "name": "Report Dashboard",
+ "name": "Batch ID Wise Report",
  "owner": "Administrator",
  "permissions": [
   {

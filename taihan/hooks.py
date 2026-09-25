@@ -43,7 +43,11 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {
+	"Job Card": "public/js/job_card_partial.js",
+	"Production Plan": "public/js/production_plan.js",
+	"Work Order": "public/js/work_order.js",
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -76,10 +80,13 @@ app_license = "mit"
 # add methods and filters to jinja environmentS
 jinja = {
     "methods": [
-		"taihan.custom.job_card_print",
-		"taihan.custom.work_order_print",
-		"taihan.custom.get_batch_values",
-		"taihan.custom.get_final_batch",
+		"taihan.taihan.job_card.job_card_print",
+		"taihan.taihan.job_card.work_order_print",
+		"taihan.taihan.job_card.get_batch_values",
+		"taihan.taihan.job_card.get_final_batch",
+		"taihan.taihan.job_card.get_barcode_svg",
+		"taihan.taihan.job_card.get_barcode_img",
+		"taihan.taihan.job_card.get_job_cards_for_work_order",
 	]
 	# "methods": "taihan.utils.jinja_methods",
 # 	"filters": "taihan.utils.jinja_filters"
@@ -90,6 +97,7 @@ jinja = {
 
 # before_install = "taihan.install.before_install"
 # after_install = "taihan.install.after_install"
+after_migrate = "taihan.taihan.job_card.ensure_overproduction_approval_fields"
 
 # Uninstallation
 # ------------
@@ -135,9 +143,9 @@ jinja = {
 # ---------------
 # Override standard doctype classes
 
-# override_doctype_class = {
-# 	"ToDo": "custom_app.overrides.CustomToDo"
-# }
+override_doctype_class = {
+	"Production Plan": "taihan.taihan.production_plan.CustomProductionPlan",
+}
 
 # Document Events
 # ---------------
@@ -149,31 +157,61 @@ doc_events = {
 		# "on_update": "method",
 		# "on_cancel": "method",
 		# "on_trash": "method"
-        "on_submit":["taihan.custom.update_expenses"],
-        "on_cancel":["taihan.custom.update_expenses_cancel"]
+        "on_submit":["taihan.taihan.journal_entry.update_expenses"],
+        "on_cancel":["taihan.taihan.journal_entry.update_expenses_cancel"]
 	},
 	"Leave Application": {
-		"validate": ["taihan.custom.validate_leave_application","taihan.custom.validate_hajj_leave","taihan.custom.validate_umrah_leave_la"],
+		"validate": ["taihan.taihan.leave_application.validate_leave_application","taihan.taihan.leave_application.validate_hajj_leave","taihan.taihan.leave_application.validate_umrah_leave_la"],
 	},
 	"Quotation":{
-		"validate": "taihan.custom.quotation_notification",
-		"before_submit": "taihan.custom.quotation_notification_before_submit",
-		"before_save":"taihan.custom.update_naming_series_quotation"
+		"validate": ["taihan.taihan.quotation.quotation_notification"],
+		"before_submit": "taihan.taihan.quotation.quotation_notification_before_submit",
+		"before_insert":"taihan.utils.autoname_quotation",
+		"after_insert":"taihan.utils.update_quotation_series",
+		# "before_save":"taihan.custom.update_naming_series_quotation"
 	},
 	"Material Request":{
-     "on_submit":"taihan.custom.send_alert_mail_rol",
+     "on_submit":"taihan.taihan.material_request.send_alert_mail_rol",
     #  "validate":"taihan.custom.send_alert_mail_rol"
     },
 	"Cost Estimation":{
-		"validate":"taihan.custom.update_values_cost_estimation"
+		"validate":"taihan.taihan.cost_estimation.update_values_cost_estimation"
      },
  	"Request for Quotation":{
-     "on_submit":"taihan.custom.send_rfq_pdf"
+     "on_submit":"taihan.taihan.request_for_quotation.send_rfq_pdf"
     },
 	"Quality Inspection":{
-		"after_insert":"taihan.custom.update_barcode"
+		"after_insert":"taihan.taihan.quality_inspection.update_barcode",
+		"on_submit":"taihan.taihan.doctype.inprocess_testing_report.inprocess_testing_report.create_inprocess_report"
 	},
-	
+	"Work Order":{
+		"before_insert": "taihan.taihan.work_order.before_insert_work_order",
+		"validate": "taihan.taihan.work_order.validate_work_order",
+		"on_trash": "taihan.taihan.job_card.delete_testing_report",
+	},
+	"Production Plan":{
+		"validate": "taihan.taihan.production_plan.validate_production_plan",
+		"before_save": "taihan.taihan.production_plan.update_warehouse_sub_assembly_item"
+	},
+	# "BOM":{
+	# 	"on_submit":"taihan.custom.update_valuation_rate",
+	# },
+	"Job Card":{
+		"after_insert":"taihan.taihan.job_card.update_tube_color",
+		"before_save": "taihan.taihan.job_card.before_save_job_card",
+  		"on_submit":["taihan.taihan.job_card.create_stock_entry","taihan.taihan.job_card.create_quality_inspection","taihan.taihan.job_card_partial.update_operation_completed_qty"],
+        "before_submit": "taihan.taihan.job_card.validate_excess_material_transfer"
+		# "on_update_after_submit":"taihan.custom.delete_stock_entry",
+	},
+	# "Downtime Entry":{
+	# 	"before_insert":"taihan.custom.update_memo_no",
+	# }
+    "Delivery Note":{
+        "before_submit":"taihan.taihan.delivery_note.set_inspected_by"
+	},
+    "Batch":{
+        "before_naming": "taihan.utils.autoname_batch"
+	}
 	
 
 }

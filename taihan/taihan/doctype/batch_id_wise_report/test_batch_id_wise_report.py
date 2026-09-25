@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestReportDashboard(FrappeTestCase):
+class TestBatchIDWiseReport(FrappeTestCase):
 	pass
