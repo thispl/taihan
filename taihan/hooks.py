@@ -47,6 +47,7 @@ doctype_js = {
 	"Job Card": "public/js/job_card_partial.js",
 	"Production Plan": "public/js/production_plan.js",
 	"Work Order": "public/js/work_order.js",
+        "Stock Entry": "public/js/stock_entry.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -153,6 +154,9 @@ override_doctype_class = {
 
 
 doc_events = {
+    "Stock Entry": {
+        "before_validate": "taihan.taihan.stock_entry.sync_stock_entry_batch_numbers"
+    },
 	"Journal Entry": {
 		# "on_update": "method",
 		# "on_cancel": "method",
@@ -249,9 +253,9 @@ doc_events = {
 # Overriding Methods
 # ------------------------------
 #
-# override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "taihan.event.get_events"
-# }
+override_whitelisted_methods = {
+    "erpnext.stock.utils.get_incoming_rate": "taihan.taihan.stock_entry.get_incoming_rate",
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,

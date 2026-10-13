@@ -1,4 +1,23 @@
 frappe.ui.form.on("Job Card", {
+	work_order: function (frm) {
+		if (frm.doc.work_order) {
+			frappe.db.get_value(
+				"Work Order",
+				frm.doc.work_order,
+				["custom_tube_thickness", "custom_tube_color", "custom_loose_tube_color"],
+				function (r) {
+					if (r) {
+						if (r.custom_tube_thickness && !frm.doc.custom_tube_thickness) {
+							frm.set_value("custom_tube_thickness", r.custom_tube_thickness);
+						}
+						if (r.custom_tube_color && !frm.doc.custom_tube_color) {
+							frm.set_value("custom_tube_color", r.custom_tube_color);
+						}
+					}
+				}
+			);
+		}
+	},
 	refresh: function (frm) {
 		bind_complete_job_button(frm);
 

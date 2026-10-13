@@ -29,15 +29,27 @@ def delete_testing_report(doc,method):
 
 
 @frappe.whitelist()
-def update_tube_color(doc,method):
+def update_tube_color(doc, method):
     if doc.work_order:
-        wo = frappe.db.get_value("Work Order", doc.work_order, ["custom_loose_tube_color", "custom_tube_color"], as_dict=True)
+        wo = frappe.db.get_value(
+            "Work Order",
+            doc.work_order,
+            ["custom_loose_tube_color", "custom_tube_color", "custom_tube_thickness"],
+            as_dict=True,
+        )
         if wo:
-            if wo.get("custom_loose_tube_color"):
+            need_save = False
+            if wo.get("custom_loose_tube_color") and not doc.custom_loose_tube_color:
                 doc.custom_loose_tube_color = wo.custom_loose_tube_color
+                need_save = True
             if wo.get("custom_tube_color") and not doc.custom_tube_color:
                 doc.custom_tube_color = wo.custom_tube_color
-            doc.save()
+                need_save = True
+            if wo.get("custom_tube_thickness") and not doc.custom_tube_thickness:
+                doc.custom_tube_thickness = wo.custom_tube_thickness
+                need_save = True
+            if need_save:
+                doc.save()
 
 
 from frappe.utils import flt
@@ -384,6 +396,11 @@ def update_excess_qty(job_card, excess_qty, process_loss_qty=None, pending_qty=N
 
 @frappe.whitelist()
 def before_save_job_card(doc, method=None):
+    if doc.work_order and not doc.custom_tube_thickness:
+        tube_thick = frappe.db.get_value("Work Order", doc.work_order, "custom_tube_thickness")
+        if tube_thick:
+            doc.custom_tube_thickness = tube_thick
+
     if doc.name:
         db_process_loss = frappe.db.get_value("Job Card", doc.name, "process_loss_qty")
         if db_process_loss is not None and flt(db_process_loss) != flt(doc.process_loss_qty):
@@ -391,6 +408,65 @@ def before_save_job_card(doc, method=None):
         db_pending = frappe.db.get_value("Job Card", doc.name, "custom_pending_qty")
         if db_pending is not None:
             doc.custom_pending_qty = flt(db_pending)
+
+    update_stranding_job_card_items(doc)
+
+
+def update_stranding_job_card_items(doc):
+    if not doc.work_order:
+        return
+    if not doc.operation or "stranding" not in str(doc.operation).lower():
+        return
+
+    from taihan.taihan.work_order import get_stranding_buffering_items, get_production_plan_tube_colors
+
+    production_plan = frappe.db.get_value("Work Order", doc.work_order, "production_plan")
+    if not production_plan:
+        return
+
+    tube_colors = get_production_plan_tube_colors(production_plan)
+    if not tube_colors:
+        return
+
+    bom_no = doc.bom_no or frappe.db.get_value("Work Order", doc.work_order, "bom_no")
+    if not bom_no:
+        return
+
+    item_color_map, has_tube_colors = get_stranding_buffering_items(bom_no)
+    if not item_color_map and not has_tube_colors:
+        return
+
+    selected_color_map = {c.lower(): c for c in tube_colors}
+    tube_color_indices = {c.lower(): idx for idx, c in enumerate(tube_colors)}
+
+    new_items = []
+    buffering_rows_to_sort = []
+
+    for r in doc.get("items", []):
+        if r.item_code in item_color_map:
+            if has_tube_colors:
+                color = item_color_map.get(r.item_code)
+                norm_color = color.lower() if color else ""
+                if norm_color in selected_color_map:
+                    r.required_qty = flt(doc.for_quantity)
+                    sort_key = tube_color_indices.get(norm_color, 999)
+                    buffering_rows_to_sort.append((sort_key, r))
+            else:
+                for c in tube_colors:
+                    new_r = frappe.copy_doc(r)
+                    new_r.required_qty = flt(doc.for_quantity)
+                    new_items.append(new_r)
+        else:
+            new_items.append(r)
+
+    if buffering_rows_to_sort:
+        buffering_rows_to_sort.sort(key=lambda x: x[0])
+        new_items = [r for _, r in buffering_rows_to_sort] + new_items
+
+    doc.set("items", [])
+    for idx, r in enumerate(new_items):
+        r.idx = idx + 1
+        doc.append("items", r)
 
 
 
@@ -641,6 +717,17 @@ def create_excess_material_transfer(job_card):
     bom = frappe.get_doc("BOM", wo.bom_no)
 
     items = []
+    is_stranding = (jc.operation == "Stranding")
+
+    from taihan.taihan.work_order import get_stranding_buffering_items, get_production_plan_tube_colors
+
+    production_plan = wo.production_plan
+    tube_colors = get_production_plan_tube_colors(production_plan) if production_plan else []
+    selected_color_map = {c.lower(): c for c in tube_colors}
+    tube_color_indices = {c.lower(): idx for idx, c in enumerate(tube_colors)}
+
+    item_color_map, has_tube_colors = get_stranding_buffering_items(wo.bom_no) if is_stranding else ({}, False)
+    buffering_items_to_sort = []
 
     for item in bom.items:
 
@@ -652,7 +739,6 @@ def create_excess_material_transfer(job_card):
         batch_no = ""
 
         if item.bom_no:
-            sub_bom = frappe.get_doc("BOM", item.bom_no)
             sub_fg_warehouse = frappe.db.get_value(
                 "Work Order",
                 {"bom_no": item.bom_no, "docstatus": 1},
@@ -686,16 +772,40 @@ def create_excess_material_transfer(job_card):
                                 break
                     break
 
-        is_loose_tube = (
-            jc.operation == "Stranding"
-            and frappe.db.get_value("Item", item.item_code, "item_group") == "Semi Finished Good (SFG)"
-        )
-        fiber_count = flt(jc.custom_fiber_count or wo.custom_fiber_count or 0)
-        no_of_tubes = int(fiber_count / 12) if fiber_count else 1
-
-        if is_loose_tube and no_of_tubes > 1:
-            qty_per_tube = required_qty / no_of_tubes
-            for _ in range(no_of_tubes):
+        if is_stranding and item.item_code in item_color_map:
+            if has_tube_colors and tube_colors:
+                color = item_color_map.get(item.item_code)
+                norm_color = color.lower() if color else ""
+                if norm_color in selected_color_map:
+                    sort_key = tube_color_indices.get(norm_color, 999)
+                    buffering_items_to_sort.append((sort_key, {
+                        "item_code": item.item_code,
+                        "qty": excess_qty,
+                        "transfer_qty": excess_qty,
+                        "uom": item.uom,
+                        "stock_uom": item.stock_uom,
+                        "conversion_factor": item.conversion_factor,
+                        "s_warehouse": s_warehouse,
+                        "t_warehouse": wo.wip_warehouse,
+                        "batch_no": batch_no
+                    }))
+            elif tube_colors:
+                for c in tube_colors:
+                    items.append({
+                        "item_code": item.item_code,
+                        "qty": excess_qty,
+                        "transfer_qty": excess_qty,
+                        "uom": item.uom,
+                        "stock_uom": item.stock_uom,
+                        "conversion_factor": item.conversion_factor,
+                        "s_warehouse": s_warehouse,
+                        "t_warehouse": wo.wip_warehouse,
+                        "batch_no": batch_no
+                    })
+            else:
+                fiber_count = flt(jc.custom_fiber_count or wo.custom_fiber_count or 0)
+                no_of_tubes = int(fiber_count / 12) if fiber_count else 1
+                qty_per_tube = required_qty / no_of_tubes if no_of_tubes > 1 else required_qty
                 items.append({
                     "item_code": item.item_code,
                     "qty": qty_per_tube,
@@ -719,6 +829,10 @@ def create_excess_material_transfer(job_card):
                 "t_warehouse": wo.wip_warehouse,
                 "batch_no": batch_no
             })
+
+    if buffering_items_to_sort:
+        buffering_items_to_sort.sort(key=lambda x: x[0])
+        items = [x[1] for x in buffering_items_to_sort] + items
 
     return {
         "stock_entry_type": "Material Transfer for Manufacture",

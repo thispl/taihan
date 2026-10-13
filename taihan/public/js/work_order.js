@@ -30,7 +30,15 @@ frappe.ui.form.on('Work Order', {
     },
     production_plan: function (frm) {
         if (frm.doc.production_plan) {
-            frm.set_value('custom_fiber_count', 12);
+            frappe.db.get_value('Production Plan', frm.doc.production_plan, 'custom_fiber_count', function (r) {
+                if (r && r.custom_fiber_count) {
+                    if (frm.doc.custom_operation_name === 'Buffering') {
+                        frm.set_value('custom_fiber_count', 12);
+                    } else {
+                        frm.set_value('custom_fiber_count', r.custom_fiber_count);
+                    }
+                }
+            });
         }
     },
     production_plan_sub_assembly_item: function (frm) {
@@ -50,9 +58,15 @@ frappe.ui.form.on('Work Order', {
 });
 
 function open_custom_job_card_dialog(frm) {
+    if (!frm.doc.operations || !frm.doc.operations.length) {
+        frappe.msgprint(__("No operations found in this Work Order."));
+        return;
+    }
+
     let pending_operations = [];
-    (frm.doc.operations || []).forEach((data) => {
-        let op_qty = flt(frm.doc.qty);
+    frm.doc.operations.forEach((data) => {
+        let op_qty = flt(frm.doc.qty) - flt(data.completed_qty) - flt(data.process_loss_qty);
+        if (op_qty <= 0) return;
         pending_operations.push({
             name: data.name,
             operation: data.operation,
@@ -63,6 +77,8 @@ function open_custom_job_card_dialog(frm) {
             hour_rate: data.hour_rate || 0,
             pending_qty: op_qty,
             qty: op_qty,
+            completed_qty: flt(data.completed_qty),
+            process_loss_qty: flt(data.process_loss_qty),
             use_column_plan: false,
             no_of_job_cards: null,
             column_quantities: []
@@ -70,7 +86,7 @@ function open_custom_job_card_dialog(frm) {
     });
 
     if (!pending_operations.length) {
-        frappe.msgprint(__("No operations found in this Work Order."));
+        frappe.msgprint(__("All operations have already been completed for this Work Order."));
         return;
     }
 
@@ -128,10 +144,10 @@ function show_job_card_dialog(frm, pending_operations) {
                     if (Math.abs(sum - target_qty) > 0.001) {
                         frappe.msgprint(
                             __(
-                                "Column Plan quantity must be equal to Manufactured Qty for Operation: <b>{0}</b><br><br>" +
-                                "<b>Manufactured Qty:</b> {1}<br>" +
-                                "<b>Column Plan Total:</b> {2}",
-                                [op.operation, target_qty, sum]
+                                "Plan quantity must be equal to Creatable Job Card Qty for Operation: <b>{0}</b><br><br>" +
+                                "<b>Creatable Job Card Qty:</b> {1}<br>" +
+                                "<b>Plan Total:</b> {2}",
+                                [op.operation, format_qty(target_qty), format_qty(sum)]
                             )
                         );
                         return;
@@ -146,9 +162,9 @@ function show_job_card_dialog(frm, pending_operations) {
                     }
                     if (standard_qty > flt(op.pending_qty)) {
                         frappe.msgprint(
-                            __("Quantity to Manufacture ({0}) cannot exceed Pending Qty ({1}) for Operation: <b>{2}</b>", [
-                                standard_qty,
-                                op.pending_qty,
+                            __("Quantity to Manufacture ({0}) cannot exceed Creatable Job Card Qty ({1}) for Operation: <b>{2}</b>", [
+                                format_qty(standard_qty),
+                                format_qty(op.pending_qty),
                                 op.operation
                             ])
                         );
@@ -204,7 +220,7 @@ function show_job_card_dialog(frm, pending_operations) {
                         <tr style="background: var(--table-header-bg, #f1f5f9);">
                             ${(op.column_quantities || []).map((_, c_idx) => `
                                 <th style="padding: 6px 8px; width: 85px; font-size: 12px; font-weight: 600; color: var(--text-color, #334155);">
-                                    C${c_idx + 1}
+                                    JC${c_idx + 1}
                                 </th>
                             `).join('')}
                         </tr>
@@ -224,15 +240,15 @@ function show_job_card_dialog(frm, pending_operations) {
             <!-- Live Calculation & Validation Status Footer -->
             <div class="d-flex flex-wrap justify-content-between align-items-center mt-2 px-1 pt-1">
                 <div class="small">
-                    <span class="text-muted">${__('Column Plan Total')}:</span>
-                    <b class="ml-1 total-col-display-${idx}" style="font-size: 14px; color: ${is_matched ? '#16a34a' : '#dc2626'};">${total_col_qty}</b>
-                    <span class="text-muted ml-3">${__('Manufactured Qty')}:</span>
-                    <b class="ml-1 text-dark" style="font-size: 14px;">${target_qty}</b>
+                    <span class="text-muted">${__('Plan Total')}:</span>
+                    <b class="ml-1 total-col-display-${idx}" style="font-size: 14px; color: ${is_matched ? '#16a34a' : '#dc2626'};">${format_qty(total_col_qty)}</b>
+                    <span class="text-muted ml-3">${__('Creatable Qty')}:</span>
+                    <b class="ml-1 text-dark" style="font-size: 14px;">${format_qty(target_qty)}</b>
                 </div>
                 <div class="status-badge-${idx}">
                     ${is_matched ?
                         `<span class="badge badge-success px-2 py-1" style="font-size: 12px;"><i class="fa fa-check mr-1"></i>${__('Quantity matched')}</span>` :
-                        `<span class="badge badge-danger px-2 py-1" style="font-size: 12px;"><i class="fa fa-times mr-1"></i>${__('Quantity mismatch')} (${total_col_qty} / ${target_qty})</span>`
+                        `<span class="badge badge-danger px-2 py-1" style="font-size: 12px;"><i class="fa fa-times mr-1"></i>${__('Quantity mismatch')} (${format_qty(total_col_qty)} / ${format_qty(target_qty)})</span>`
                     }
                 </div>
             </div>
@@ -269,12 +285,12 @@ function show_job_card_dialog(frm, pending_operations) {
             let is_matched = Math.abs(total_col_qty - target_qty) < 0.001;
 
             $wrapper.find(`.total-col-display-${op_idx}`)
-                .text(total_col_qty)
+                .text(format_qty(total_col_qty))
                 .css('color', is_matched ? '#16a34a' : '#dc2626');
 
             let badge_html = is_matched ?
                 `<span class="badge badge-success px-2 py-1" style="font-size: 12px;"><i class="fa fa-check mr-1"></i>${__('Quantity matched')}</span>` :
-                `<span class="badge badge-danger px-2 py-1" style="font-size: 12px;"><i class="fa fa-times mr-1"></i>${__('Quantity mismatch')} (${total_col_qty} / ${target_qty})</span>`;
+                `<span class="badge badge-danger px-2 py-1" style="font-size: 12px;"><i class="fa fa-times mr-1"></i>${__('Quantity mismatch')} (${format_qty(total_col_qty)} / ${format_qty(target_qty)})</span>`;
 
             $wrapper.find(`.status-badge-${op_idx}`).html(badge_html);
         });
@@ -283,11 +299,11 @@ function show_job_card_dialog(frm, pending_operations) {
     function render_ui() {
         let html = `
             <div class="column-plan-container" style="max-height: 65vh; overflow-y: auto; padding: 5px;">
-                <!-- Column Plan Purpose Banner -->
+                <!-- Plan Purpose Banner -->
                 <div class="alert alert-info py-2 px-3 mb-3 d-flex align-items-start" style="font-size: 13px; background-color: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; border-radius: 6px;">
                     <i class="fa fa-info-circle mr-2 mt-1" style="font-size: 15px; color: #0284c7;"></i>
                     <div>
-                        <strong>Column Plan:</strong> Enable this option on any operation to distribute its manufactured quantity across multiple Job Cards with customized quantities per card.
+                        <strong>Plan:</strong> Enable this option on any operation to distribute its manufactured quantity across multiple Job Cards with customized quantities per card.
                     </div>
                 </div>
         `;
@@ -306,8 +322,13 @@ function show_job_card_dialog(frm, pending_operations) {
                             <small class="text-muted">${op.workstation ? __('Workstation: ') + escape_html(op.workstation) : ''}</small>
                         </div>
                         <div class="text-right">
-                            <span class="text-muted small">${__('Manufactured Qty')}:</span>
-                            <span class="font-weight-bold ml-1 text-primary" style="font-size: 15px;">${target_qty}</span>
+                            <span class="text-muted small">${__('Creatable Job Card Qty')}:</span>
+                            <span class="font-weight-bold ml-1 text-primary" style="font-size: 15px;">${format_qty(op.pending_qty)}</span>
+                            ${(op.completed_qty > 0 || op.process_loss_qty > 0) ? `
+                                <div class="text-muted" style="font-size: 11px; margin-top: 2px;">
+                                    ${__('WO Qty')}: ${format_qty(frm.doc.qty)} | ${__('Completed')}: ${format_qty(op.completed_qty)} | ${__('Process Loss')}: ${format_qty(op.process_loss_qty)}
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
 
@@ -318,13 +339,13 @@ function show_job_card_dialog(frm, pending_operations) {
                             <div class="d-flex align-items-center">
                                 <input type="checkbox" class="cp-toggle" id="cp_toggle_${idx}" data-op-idx="${idx}" ${op.use_column_plan ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer; accent-color: #2563eb; margin: 0 8px 0 0;">
                                 <label for="cp_toggle_${idx}" style="cursor: pointer; margin: 0; font-size: 13px; font-weight: 600; color: var(--text-color, #1f272e); user-select: none;">
-                                    ${__('Column Plan')}
+                                    ${__('Plan')}
                                 </label>
                             </div>
                             <small class="text-muted d-block mt-1">${__('Split quantity into multiple custom Job Cards')}</small>
                         </div>
 
-                        <!-- Standard Quantity (when Column Plan is unchecked) -->
+                        <!-- Standard Quantity (when Plan is unchecked) -->
                         <div class="col-sm-6 std-section-${idx}" style="${op.use_column_plan ? 'display: none;' : ''}">
                             <div class="d-flex align-items-center justify-content-sm-end">
                                 <label class="small text-muted m-0 mr-2">${__('Quantity to Manufacture')}:</label>
@@ -332,7 +353,7 @@ function show_job_card_dialog(frm, pending_operations) {
                             </div>
                         </div>
 
-                        <!-- No. of Job Cards Input (when Column Plan is checked) -->
+                        <!-- No. of Job Cards Input (when Plan is checked) -->
                         <div class="col-sm-6 cp-count-section-${idx}" style="${!op.use_column_plan ? 'display: none;' : ''}">
                             <div class="d-flex align-items-center justify-content-sm-end">
                                 <label class="small font-weight-bold m-0 mr-2 text-nowrap">${__('No. of Job Cards')}:</label>
@@ -344,7 +365,7 @@ function show_job_card_dialog(frm, pending_operations) {
                         </div>
                     </div>
 
-                    <!-- Column Plan Grid Container -->
+                    <!-- Plan Grid Container -->
                     <div class="cp-grid-section-${idx} mt-3 pt-3 border-top" style="${!op.use_column_plan || !op.no_of_job_cards ? 'display: none;' : ''}">
                         ${op.use_column_plan && op.no_of_job_cards ? get_grid_inner_html(op, idx) : ''}
                     </div>
@@ -360,7 +381,7 @@ function show_job_card_dialog(frm, pending_operations) {
     function bind_dialog_events() {
         let $wrapper = dialog.fields_dict.operations_html.$wrapper;
 
-        // Toggle Column Plan Checkbox
+        // Toggle Plan Checkbox
         $wrapper.find('.cp-toggle').off('change').on('change', function () {
             let op_idx = parseInt($(this).data('op-idx'));
             let checked = this.checked;
@@ -386,7 +407,7 @@ function show_job_card_dialog(frm, pending_operations) {
             render_op_grid(op_idx);
         });
 
-        // Change Standard Quantity (when Column Plan is off)
+        // Change Standard Quantity (when Plan is off)
         $wrapper.find('.std-qty-input').off('input change').on('input change', function () {
             let op_idx = parseInt($(this).data('op-idx'));
             let val = flt($(this).val());
@@ -431,5 +452,19 @@ function show_job_card_dialog(frm, pending_operations) {
 function escape_html(str) {
     if (!str) return '';
     return $('<div>').text(str).html();
+}
+
+function format_qty(val) {
+    if (val === null || val === undefined || isNaN(val)) return '0';
+    let n = flt(val);
+    let decimals = (n.toString().split('.')[1] || '').length;
+    decimals = Math.min(Math.max(decimals, 0), 3);
+    if (typeof format_number === 'function') {
+        return format_number(n, null, decimals);
+    }
+    return n.toLocaleString('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    });
 }
 
