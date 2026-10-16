@@ -11,7 +11,16 @@ class CustomProductionPlan(ProductionPlan):
 
     @frappe.whitelist()
     def get_sub_assembly_items(self, manufacturing_type=None):
-        super().get_sub_assembly_items(manufacturing_type)
+        if self.skip_available_sub_assembly_item and not self.sub_assembly_warehouse:
+            frappe.throw(_("Please select the Sub Assembly Warehouse"))
+
+        skip_flag = self.skip_available_sub_assembly_item
+        self.skip_available_sub_assembly_item = 0
+        try:
+            super().get_sub_assembly_items(manufacturing_type)
+        finally:
+            self.skip_available_sub_assembly_item = skip_flag
+
         self.process_sub_assembly_items()
 
     def process_sub_assembly_items(self):
@@ -54,7 +63,60 @@ class CustomProductionPlan(ProductionPlan):
         selected_color_map = {c.lower(): c for c in tube_colors}
         tube_color_indices = {c.lower(): idx for idx, c in enumerate(tube_colors)}
 
-        # Step 3: Find Stranding quantity and BOM mapping
+        # Stock deduction setup
+        is_all_warehouses = False
+        selected_wh = ""
+        stock_cache = {}
+
+        def get_stock_data(item_code, wh_name):
+            cache_key = (item_code, wh_name)
+            if cache_key not in stock_cache:
+                bin_data = frappe.db.get_value(
+                    "Bin",
+                    {"item_code": item_code, "warehouse": wh_name},
+                    ["actual_qty", "reserved_qty_for_production"],
+                    as_dict=True,
+                )
+                act_qty = flt(bin_data.actual_qty) if bin_data else 0.0
+                res_qty = flt(bin_data.reserved_qty_for_production) if bin_data else 0.0
+                avail_qty = max(0.0, act_qty - res_qty)
+                stock_cache[cache_key] = {
+                    "actual_qty": act_qty,
+                    "available_qty": avail_qty,
+                }
+            return stock_cache[cache_key]
+
+        if self.skip_available_sub_assembly_item and self.sub_assembly_warehouse:
+            selected_wh = (self.sub_assembly_warehouse or "").strip()
+            if selected_wh:
+                wh_doc = frappe.db.get_value(
+                    "Warehouse", selected_wh, ["name", "is_group"], as_dict=True
+                )
+                if wh_doc and (wh_doc.is_group or "all warehouse" in str(wh_doc.name).lower()):
+                    is_all_warehouses = True
+                elif "all warehouse" in selected_wh.lower():
+                    is_all_warehouses = True
+
+        def apply_stock_deduction(prod_item, row_wh, current_qty):
+            should_reduce = False
+            if is_all_warehouses:
+                should_reduce = True
+            elif row_wh and row_wh.lower() == selected_wh.lower():
+                should_reduce = True
+
+            actual_stock = 0.0
+            if prod_item and row_wh:
+                stock_info = get_stock_data(prod_item, row_wh)
+                actual_stock = stock_info["actual_qty"]
+                if should_reduce:
+                    avail_stock = stock_info["available_qty"]
+                    if avail_stock > 0:
+                        deduction = min(current_qty, avail_stock)
+                        current_qty = current_qty - deduction
+                        stock_info["available_qty"] = max(0.0, avail_stock - deduction)
+            return current_qty, actual_stock
+
+        # Step 3: Find Stranding quantity and BOM mapping (with stock deduction applied)
         stranding_qty_map = {}
         stranding_bom_map = {}
         for row in self.sub_assembly_items:
@@ -81,6 +143,13 @@ class CustomProductionPlan(ProductionPlan):
                     if hasattr(row, "get")
                     else getattr(row, "bom_no", None)
                 )
+
+                if self.skip_available_sub_assembly_item and selected_wh and prod_item:
+                    qty, act_qty = apply_stock_deduction(prod_item, row.get("fg_warehouse"), qty)
+                    row.qty = qty
+                    row.actual_qty = act_qty
+                    row._stock_reduced = True
+
                 if pp_item and prod_item:
                     stranding_qty_map[(pp_item, prod_item)] = qty
                     stranding_bom_map[(pp_item, prod_item)] = bom_no
@@ -127,6 +196,14 @@ class CustomProductionPlan(ProductionPlan):
         new_sub_assembly_items = []
         buffering_rows_to_sort = []
 
+        def to_row_dict(r):
+            if hasattr(r, "as_dict") and callable(r.as_dict):
+                d = r.as_dict()
+            else:
+                d = dict(r)
+            d.pop("name", None)
+            return d
+
         for row in self.sub_assembly_items:
             fg_wh = (
                 row.get("fg_warehouse")
@@ -137,13 +214,19 @@ class CustomProductionPlan(ProductionPlan):
             is_buffering = "buffering" in fg_wh
 
             if not is_buffering or not tube_colors:
-                row_dict = (
-                    row.as_dict()
-                    if hasattr(row, "as_dict")
-                    else dict(row)
-                )
-                row_dict.pop("name", None)
-                new_sub_assembly_items.append(row_dict)
+                # Non-buffering row (e.g. Stranding, Jacketing)
+                if not getattr(row, "_stock_reduced", False) and self.skip_available_sub_assembly_item and selected_wh:
+                    prod_item = row.get("production_item") if hasattr(row, "get") else getattr(row, "production_item", None)
+                    r_qty = flt(row.get("qty") if hasattr(row, "get") else getattr(row, "qty", 0))
+                    r_qty, act_qty = apply_stock_deduction(prod_item, row.get("fg_warehouse"), r_qty)
+                    row.qty = r_qty
+                    row.actual_qty = act_qty
+                    row._stock_reduced = True
+
+                # Only include if remaining qty > 0
+                if flt(row.get("qty"), 4) > 0:
+                    row_dict = to_row_dict(row)
+                    new_sub_assembly_items.append(row_dict)
             else:
                 pp_item = (
                     row.get("production_plan_item")
@@ -168,22 +251,31 @@ class CustomProductionPlan(ProductionPlan):
 
                 item_color_map, has_tube_colors = get_stranding_buffering_info(parent_bom)
 
-                stranding_qty = (
-                    stranding_qty_map.get((pp_item, parent_item))
-                    or stranding_qty_map.get(parent_item)
-                    or stranding_qty_map.get(pp_item)
-                    or stranding_qty_map.get("_default")
-                )
+                stranding_qty = None
+                if (pp_item, parent_item) in stranding_qty_map:
+                    stranding_qty = stranding_qty_map[(pp_item, parent_item)]
+                elif parent_item in stranding_qty_map:
+                    stranding_qty = stranding_qty_map[parent_item]
+                elif pp_item in stranding_qty_map:
+                    stranding_qty = stranding_qty_map[pp_item]
+                elif "_default" in stranding_qty_map:
+                    stranding_qty = stranding_qty_map["_default"]
 
                 orig_qty = flt(row.get("qty") if hasattr(row, "get") else getattr(row, "qty", 0))
                 num_colors = len(tube_colors)
 
-                if stranding_qty:
+                if stranding_qty is not None:
                     target_qty = stranding_qty
                 elif num_colors > 0:
                     target_qty = orig_qty / num_colors
                 else:
                     target_qty = orig_qty
+
+                # If parent sub-assembly requires 0 (because stock is sufficient), skip buffering items
+                if flt(target_qty, 4) <= 0:
+                    continue
+
+                row_wh = (row.get("fg_warehouse") or "").strip()
 
                 if has_tube_colors:
                     # Filter tube colors defined in BOM
@@ -202,34 +294,35 @@ class CustomProductionPlan(ProductionPlan):
 
                     if norm_color in selected_color_map:
                         canonical_color = selected_color_map[norm_color]
-                        row_dict = (
-                            row.as_dict()
-                            if hasattr(row, "as_dict")
-                            else dict(row)
-                        )
-                        row_dict.pop("name", None)
+                        row_dict = to_row_dict(row)
                         row_dict["custom_tube_colour"] = canonical_color
-                        row_dict["qty"] = target_qty
-                        sort_key = tube_color_indices.get(norm_color, 999)
-                        buffering_rows_to_sort.append((sort_key, row_dict))
+                        b_qty = target_qty
+                        if self.skip_available_sub_assembly_item and selected_wh:
+                            b_qty, act_qty = apply_stock_deduction(item_code, row_wh, b_qty)
+                            row_dict["actual_qty"] = act_qty
+                        row_dict["qty"] = b_qty
+                        if flt(row_dict["qty"], 4) > 0:
+                            sort_key = tube_color_indices.get(norm_color, 999)
+                            buffering_rows_to_sort.append((sort_key, row_dict))
                     # Exclude unselected colors and generic uncolored buffering rows
                 else:
                     # Existing flow: duplicate for each selected tube color
                     for color in tube_colors:
-                        row_dict = (
-                            row.as_dict()
-                            if hasattr(row, "as_dict")
-                            else dict(row)
-                        )
-                        row_dict.pop("name", None)
+                        row_dict = to_row_dict(row)
                         row_dict["custom_tube_colour"] = color
-                        row_dict["qty"] = target_qty
-                        new_sub_assembly_items.append(row_dict)
+                        b_qty = target_qty
+                        item_code = row.get("production_item") if hasattr(row, "get") else getattr(row, "production_item", None)
+                        if self.skip_available_sub_assembly_item and selected_wh:
+                            b_qty, act_qty = apply_stock_deduction(item_code, row_wh, b_qty)
+                            row_dict["actual_qty"] = act_qty
+                        row_dict["qty"] = b_qty
+                        if flt(row_dict["qty"], 4) > 0:
+                            new_sub_assembly_items.append(row_dict)
 
         # Append sorted buffering rows from BOM-defined colors
         if buffering_rows_to_sort:
             buffering_rows_to_sort.sort(key=lambda x: x[0])
-            for _, row_dict in buffering_rows_to_sort:
+            for sort_idx, row_dict in buffering_rows_to_sort:
                 new_sub_assembly_items.append(row_dict)
 
         # Step 5: Re-assign idx and set back to sub_assembly_items
@@ -237,6 +330,18 @@ class CustomProductionPlan(ProductionPlan):
         for idx, row_dict in enumerate(new_sub_assembly_items):
             row_dict["idx"] = idx + 1
             self.append("sub_assembly_items", row_dict)
+
+        if self.skip_available_sub_assembly_item and not self.sub_assembly_items:
+            message = (
+                _(
+                    "As there are sufficient Sub Assembly Items, Work Order is not required for Warehouse {0}."
+                ).format(self.sub_assembly_warehouse)
+                + "<br><br>"
+            )
+            message += _(
+                "If you still want to proceed, please disable 'Skip Available Sub Assembly Items' checkbox."
+            )
+            frappe.msgprint(message, title=_("Note"))
 
 
 def validate_production_plan_doc(doc):

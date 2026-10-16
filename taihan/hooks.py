@@ -155,7 +155,8 @@ override_doctype_class = {
 
 doc_events = {
     "Stock Entry": {
-        "before_validate": "taihan.taihan.stock_entry.sync_stock_entry_batch_numbers"
+        "before_validate": "taihan.taihan.stock_entry.sync_stock_entry_batch_numbers",
+        "on_submit": "taihan.taihan.stock_entry.sync_submitted_stock_entry_batches"
     },
 	"Journal Entry": {
 		# "on_update": "method",
@@ -203,7 +204,7 @@ doc_events = {
 	"Job Card":{
 		"after_insert":"taihan.taihan.job_card.update_tube_color",
 		"before_save": "taihan.taihan.job_card.before_save_job_card",
-  		"on_submit":["taihan.taihan.job_card.create_stock_entry","taihan.taihan.job_card.create_quality_inspection","taihan.taihan.job_card_partial.update_operation_completed_qty"],
+  		"on_submit":["taihan.taihan.job_card.create_stock_entry","taihan.taihan.job_card.create_quality_inspection","taihan.taihan.job_card_partial.update_operation_completed_qty","taihan.taihan.job_card.sync_submitted_job_card_status"],
         "before_submit": "taihan.taihan.job_card.validate_excess_material_transfer"
 		# "on_update_after_submit":"taihan.custom.delete_stock_entry",
 	},

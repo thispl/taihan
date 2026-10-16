@@ -105,12 +105,16 @@ def _make_stock_entry(doc, fg_completed_qty, finished_item_qty, raw_material_rat
 
     stock = frappe.new_doc("Stock Entry")
     stock.stock_entry_type = "Manufacture"
-    stock.work_order = doc.work_order
+    stock.purpose = "Manufacture"
+    # Do not set work_order directly so ERPNext's cumulative process loss and overproduction validations are skipped
+    stock.custom_work_order = doc.work_order
     stock.company = "TAIHAN KUWAIT FIBER OPTIC  CABLE COMPANY"
     stock.from_bom = 1
     stock.bom_no = doc.bom_no
     stock.fg_completed_qty = fg_completed_qty
     stock.custom_job_card = doc.name
+    stock.process_loss_qty = 0.0
+    stock.process_loss_percentage = 0.0
 
     for i in doc.items:
         stock.append("items", {
@@ -137,11 +141,21 @@ def _make_stock_entry(doc, fg_completed_qty, finished_item_qty, raw_material_rat
     stock.submit()
 
     batch = frappe.db.get_value("Batch", {"reference_name": stock.name}, "name")
+    if not batch:
+        batch = frappe.db.get_value("Stock Entry Detail", {"parent": stock.name, "is_finished_item": 1}, "batch_no")
+
+    if batch:
+        frappe.db.sql("""
+            UPDATE `tabStock Entry Detail`
+            SET batch_number = %s, batch_no = %s, custom_batch_qty = %s
+            WHERE parent = %s AND is_finished_item = 1
+        """, (batch, batch, finished_item_qty, stock.name))
+
     frappe.db.sql("""
         UPDATE `tabStock Entry`
         SET job_card = %s
-        WHERE work_order = %s and stock_entry_type = "Manufacture" and name = %s
-    """, (doc.name, doc.work_order, stock.name))
+        WHERE name = %s and stock_entry_type = "Manufacture"
+    """, (doc.name, stock.name))
 
     return stock.name, batch
 
@@ -192,10 +206,8 @@ def create_partial_stock_entry(job_card):
     # Create stock entry (and Batch) for the newly completed portion
     stock_name, batch = _make_stock_entry(doc, delta, delta, partial_ratio)
 
-    # Sync Work Order Operation completed_qty with the actual produced qty (post Stock Entry submit)
-    if doc.work_order and doc.operation_id:
-        produced_qty = frappe.db.get_value("Work Order", doc.work_order, "produced_qty")
-        frappe.db.set_value("Work Order Operation", doc.operation_id, "completed_qty", produced_qty)
+    from taihan.taihan.job_card import _update_work_order_produced_qty
+    _update_work_order_produced_qty(doc)
 
     # Keep for_quantity and required_qty at their original values.
     # total_completed_qty is recalculated from time logs during save and will reflect

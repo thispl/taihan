@@ -85,42 +85,106 @@ def get_batch_warehouse_details(batch_no, job_card=None, item_code=None, work_or
 
 def sync_stock_entry_batch_numbers(doc, method=None):
 	"""Server-side hook: Ensures batch_number and batch_no are synced
-	when creating/validating Stock Entry, especially for Material Transfer
-	of Stranding or from Job Card.
+	when creating/validating Stock Entry across all purposes (Manufacture,
+	Material Transfer, etc.).
 	"""
 	if not doc.get("items"):
 		return
 
-	is_stranding = False
-	if doc.get("job_card"):
-		op = frappe.db.get_value("Job Card", doc.job_card, "operation")
-		if op and "strand" in cstr(op).lower():
-			is_stranding = True
+	jc_name = doc.get("job_card") or doc.get("custom_job_card")
+	jc_batch = None
+	if jc_name:
+		jc_batch = frappe.db.get_value("Job Card", jc_name, "custom_batch_no") or frappe.db.get_value("Job Card", jc_name, "batch_no")
 
 	for row in doc.items:
-		if is_stranding or doc.purpose == "Material Transfer for Manufacture":
-			# Sync batch_no -> batch_number
-			if row.batch_no and not row.get("batch_number"):
-				row.batch_number = row.batch_no
-			# Sync batch_number -> batch_no
-			elif row.get("batch_number") and not row.batch_no:
-				row.batch_no = row.batch_number
+		# If finished item in Manufacture and batch not yet set, take from linked Job Card if available
+		if row.is_finished_item and not row.batch_no and not row.get("batch_number") and jc_batch:
+			row.batch_no = jc_batch
+			row.batch_number = jc_batch
 
-			if row.batch_no or row.get("batch_number"):
-				row.use_serial_batch_fields = 1
+		# If serial_and_batch_bundle exists, pull batch from bundle
+		if not row.batch_no and not row.get("batch_number") and row.serial_and_batch_bundle:
+			bundle_batch = frappe.db.get_value(
+				"Serial and Batch Entry",
+				{"parent": row.serial_and_batch_bundle},
+				"batch_no"
+			)
+			if bundle_batch:
+				row.batch_no = bundle_batch
+				row.batch_number = bundle_batch
 
-		# Auto-populate custom_batch_qty with full quantity of the batch
+		# Sync batch_no -> batch_number
+		if row.batch_no and not row.get("batch_number"):
+			row.batch_number = row.batch_no
+		# Sync batch_number -> batch_no
+		elif row.get("batch_number") and not row.batch_no:
+			row.batch_no = row.batch_number
+
+		if row.batch_no or row.get("batch_number"):
+			row.use_serial_batch_fields = 1
+
+		# Auto-populate custom_batch_qty with full quantity of the batch or row.qty
 		batch = row.get("batch_number") or row.batch_no
+		if batch:
+			full_qty = frappe.db.get_value("Batch", batch, "batch_qty")
+			if full_qty is not None and flt(full_qty) > 0:
+				row.custom_batch_qty = flt(full_qty)
+			elif row.qty:
+				row.custom_batch_qty = flt(row.qty)
+
+
+def sync_submitted_stock_entry_batches(doc, method=None):
+	"""On submit hook: ERPNext v15 generates the Batch during Stock Ledger Entry
+	processing on submit. This hook ensures the generated Batch is written to
+	Stock Entry Detail (batch_number, batch_no, custom_batch_qty) and synced
+	back to the linked Job Card (custom_batch_no, batch_no).
+	"""
+	if not doc.get("items"):
+		return
+
+	jc_name = doc.get("job_card") or doc.get("custom_job_card")
+	created_batch = frappe.db.get_value("Batch", {"reference_name": doc.name}, "name")
+
+	for row in doc.items:
+		batch = row.batch_no or row.get("batch_number")
+
 		if not batch and row.serial_and_batch_bundle:
 			batch = frappe.db.get_value(
 				"Serial and Batch Entry",
 				{"parent": row.serial_and_batch_bundle},
 				"batch_no"
 			)
+
+		if not batch and row.is_finished_item:
+			batch = created_batch
+
 		if batch:
+			row.batch_no = batch
+			row.batch_number = batch
 			full_qty = frappe.db.get_value("Batch", batch, "batch_qty")
-			if full_qty is not None:
-				row.custom_batch_qty = flt(full_qty)
+			batch_qty = flt(full_qty) if (full_qty is not None and flt(full_qty) > 0) else flt(row.qty)
+			row.custom_batch_qty = batch_qty
+
+			frappe.db.sql("""
+				UPDATE `tabStock Entry Detail`
+				SET batch_no = %s, batch_number = %s, custom_batch_qty = %s
+				WHERE name = %s
+			""", (batch, batch, batch_qty, row.name))
+
+			if row.is_finished_item and jc_name:
+				frappe.db.sql("""
+					UPDATE `tabJob Card`
+					SET custom_batch_no = %s, batch_no = %s
+					WHERE name = %s
+				""", (batch, batch, jc_name))
+
+				try:
+					from taihan.taihan.job_card import _append_to_all_batch_nos
+					jc_doc = frappe.get_doc("Job Card", jc_name)
+					_append_to_all_batch_nos(jc_doc, batch)
+				except Exception:
+					pass
+
 
 
 @frappe.whitelist()

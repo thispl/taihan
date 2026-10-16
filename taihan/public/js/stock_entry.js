@@ -170,13 +170,12 @@ function handle_batch_entry(frm, cdt, cdn, entered_field) {
 
 	let batch_val = row[entered_field];
 	if (!batch_val) {
-		frappe.model.set_value(cdt, cdn, "custom_batch_qty", 0);
+		row.batch_no = "";
+		row.batch_number = "";
+		row.custom_batch_qty = 0;
+		frm.refresh_field("items");
 		return;
 	}
-
-	row.batch_no = batch_val;
-	row.batch_number = batch_val;
-	row.use_serial_batch_fields = 1;
 
 	frappe.db
 		.get_value("Batch", batch_val, ["item", "batch_qty", "expiry_date", "stock_uom"])
@@ -186,154 +185,178 @@ function handle_batch_entry(frm, cdt, cdn, entered_field) {
 			let batch_item = batch_info.item;
 			if (!batch_item) return;
 
+			// If row has an item_code already and it differs from the batch's item:
+			// Never overwrite an existing item_code with the batch's item!
+			if (row.item_code && batch_item && row.item_code !== batch_item) {
+				frappe.msgprint(__("Batch {0} belongs to item {1}, not {2}.", [batch_val, batch_item, row.item_code]));
+				row[entered_field] = "";
+				row.batch_no = "";
+				row.batch_number = "";
+				frm.refresh_field("items");
+				return;
+			}
+
+			row.batch_no = batch_val;
+			row.batch_number = batch_val;
+			row.use_serial_batch_fields = 1;
+
 			if (batch_info.batch_qty !== undefined) {
-				frappe.model.set_value(cdt, cdn, "custom_batch_qty", flt(batch_info.batch_qty));
+				row.custom_batch_qty = flt(batch_info.batch_qty);
 			}
 
 			// If qty is not yet set, set to batch_qty or default 1
 			if (flt(row.qty) <= 0) {
 				row.qty = flt(batch_info.batch_qty) || 1;
-				frappe.model.set_value(cdt, cdn, "qty", row.qty);
+			}
+
+			// If item_code is not set, set it from the batch
+			if (!row.item_code) {
+				frappe.flags.hide_serial_batch_dialog = true;
+				frappe.model.set_value(cdt, cdn, "item_code", batch_item).then(() => {
+					row.use_serial_batch_fields = 1;
+					row.batch_no = batch_val;
+					row.batch_number = batch_val;
+					frappe.flags.hide_serial_batch_dialog = false;
+					frm.refresh_field("items");
+				});
+				return;
 			}
 
 			// Compare Job Card and Batch Number to get warehouse details
+			let jc_name = frm.doc.job_card || frm.doc.custom_job_card;
 			frappe.call({
 				method: "taihan.taihan.stock_entry.get_batch_warehouse_details",
 				args: {
 					batch_no: batch_val,
-					job_card: frm.doc.job_card,
-					item_code: batch_item,
+					job_card: jc_name,
+					item_code: row.item_code,
 					work_order: frm.doc.work_order,
 				},
 				callback: function (wh_res) {
 					if (wh_res && wh_res.message) {
 						let wh_data = wh_res.message;
 						if (wh_data.s_warehouse && !row.s_warehouse) {
-							frappe.model.set_value(cdt, cdn, "s_warehouse", wh_data.s_warehouse);
+							row.s_warehouse = wh_data.s_warehouse;
 						}
 						if (wh_data.t_warehouse && !row.t_warehouse) {
-							frappe.model.set_value(cdt, cdn, "t_warehouse", wh_data.t_warehouse);
+							row.t_warehouse = wh_data.t_warehouse;
 						}
 					}
 
-					frappe.model.set_value(cdt, cdn, "use_serial_batch_fields", 1);
-					frappe.model.set_value(cdt, cdn, "batch_no", batch_val);
-					frappe.model.set_value(cdt, cdn, "batch_number", batch_val);
-
-					// Fetch Item Code and details if different or empty
-					if (row.item_code !== batch_item) {
-						frappe.flags.hide_serial_batch_dialog = true;
-						frappe.model.set_value(cdt, cdn, "item_code", batch_item).then(() => {
-							frappe.model.set_value(cdt, cdn, "use_serial_batch_fields", 1);
-							frappe.model.set_value(cdt, cdn, "batch_no", batch_val);
-							frappe.model.set_value(cdt, cdn, "batch_number", batch_val);
+					let calc_qty = flt(row.qty) || flt(row.transfer_qty) || 1;
+					frappe.flags.hide_serial_batch_dialog = true;
+					frappe.call({
+						doc: frm.doc,
+						method: "get_item_details",
+						args: {
+							item_code: row.item_code,
+							warehouse: cstr(row.s_warehouse) || cstr(row.t_warehouse),
+							transfer_qty: row.transfer_qty || calc_qty,
+							serial_no: row.serial_no,
+							batch_no: batch_val,
+							bom_no: row.bom_no,
+							expense_account: row.expense_account,
+							cost_center: row.cost_center,
+							company: frm.doc.company,
+							qty: calc_qty,
+							voucher_type: frm.doc.doctype,
+							voucher_no: row.name,
+							allow_zero_valuation: 1,
+						},
+						callback: function (res) {
+							if (res && res.message) {
+								$.each(res.message, function (k, v) {
+									if (v !== undefined && v !== null && k !== "batch_no" && k !== "batch_number" && k !== "item_code") {
+										row[k] = v;
+									}
+								});
+							}
+							row.use_serial_batch_fields = 1;
+							row.batch_no = batch_val;
+							row.batch_number = batch_val;
 							frappe.flags.hide_serial_batch_dialog = false;
 							frm.refresh_field("items");
-						});
-					} else {
-						// Item code is already set, call get_item_details to fetch rate, account, etc.
-						frappe.flags.hide_serial_batch_dialog = true;
-						frappe.call({
-							doc: frm.doc,
-							method: "get_item_details",
-							args: {
-								item_code: row.item_code,
-								warehouse: cstr(row.s_warehouse) || cstr(row.t_warehouse),
-								transfer_qty: row.transfer_qty,
-								serial_no: row.serial_no,
-								batch_no: batch_val,
-								bom_no: row.bom_no,
-								expense_account: row.expense_account,
-								cost_center: row.cost_center,
-								company: frm.doc.company,
-								qty: row.qty,
-								voucher_type: frm.doc.doctype,
-								voucher_no: row.name,
-								allow_zero_valuation: 1,
-							},
-							callback: function (res) {
-								if (res && res.message) {
-									$.each(res.message, function (k, v) {
-										if (v !== undefined && v !== null && k !== "batch_no" && k !== "batch_number") {
-											frappe.model.set_value(cdt, cdn, k, v);
-										}
-									});
-								}
-								frappe.model.set_value(cdt, cdn, "use_serial_batch_fields", 1);
-								frappe.model.set_value(cdt, cdn, "batch_no", batch_val);
-								frappe.model.set_value(cdt, cdn, "batch_number", batch_val);
-								frappe.flags.hide_serial_batch_dialog = false;
-								frm.refresh_field("items");
-							},
-						});
-					}
+						},
+						error: function () {
+							frappe.flags.hide_serial_batch_dialog = false;
+							frm.refresh_field("items");
+						}
+					});
 				},
 			});
 		});
 }
 
 function sync_stranding_job_card_batches(frm) {
-	if (!frm.doc.job_card || !frm.doc.items || !frm.doc.items.length) return;
+	if (!frm.doc.items || !frm.doc.items.length) return;
 
-	frappe.db
-		.get_value("Job Card", frm.doc.job_card, ["operation", "batch_no", "wip_warehouse"])
-		.then((r) => {
-			if (!r || !r.message) return;
-			let jc = r.message;
-			let op_lower = (jc.operation || "").toLowerCase();
-			let is_stranding =
-				op_lower.includes("strand") ||
-				frm.doc.purpose === "Material Transfer for Manufacture" ||
-				frm.doc.stock_entry_type === "Material Transfer for Manufacture";
+	let jc_name = frm.doc.job_card || frm.doc.custom_job_card;
 
-			if (is_stranding) {
-				frm.doc.items.forEach((row) => {
-					let changed = false;
-					if (row.batch_no && row.batch_number !== row.batch_no) {
-						frappe.model.set_value(row.doctype, row.name, "batch_number", row.batch_no);
-						changed = true;
-					} else if (row.batch_number && row.batch_no !== row.batch_number) {
-						frappe.model.set_value(row.doctype, row.name, "batch_no", row.batch_number);
-						changed = true;
-					} else if (!row.batch_no && !row.batch_number && jc.batch_no) {
-						frappe.model.set_value(row.doctype, row.name, "batch_number", jc.batch_no);
-						frappe.model.set_value(row.doctype, row.name, "batch_no", jc.batch_no);
-						changed = true;
-					}
+	// 1. Sync batch_no <-> batch_number and serial_and_batch_bundle for existing values
+	let changed = false;
+	frm.doc.items.forEach((row) => {
+		if (row.batch_no && row.batch_number !== row.batch_no) {
+			row.batch_number = row.batch_no;
+			row.use_serial_batch_fields = 1;
+			changed = true;
+		} else if (row.batch_number && row.batch_no !== row.batch_number) {
+			row.batch_no = row.batch_number;
+			row.use_serial_batch_fields = 1;
+			changed = true;
+		}
 
-					let current_batch = row.batch_number || row.batch_no;
-					if (current_batch) {
-						frappe.model.set_value(row.doctype, row.name, "use_serial_batch_fields", 1);
-						if (!row.s_warehouse || !row.t_warehouse) {
-							frappe.call({
-								method: "taihan.taihan.stock_entry.get_batch_warehouse_details",
-								args: {
-									batch_no: current_batch,
-									job_card: frm.doc.job_card,
-									item_code: row.item_code,
-									work_order: frm.doc.work_order,
-								},
-								callback: function (wh_res) {
-									if (wh_res && wh_res.message) {
-										let wh_data = wh_res.message;
-										if (wh_data.s_warehouse && !row.s_warehouse) {
-											frappe.model.set_value(row.doctype, row.name, "s_warehouse", wh_data.s_warehouse);
-										}
-										if (wh_data.t_warehouse && !row.t_warehouse) {
-											frappe.model.set_value(row.doctype, row.name, "t_warehouse", wh_data.t_warehouse);
-										}
-										frm.refresh_field("items");
-									}
-								},
-							});
-						}
-					}
-					if (changed) {
+		if (row.serial_and_batch_bundle && (!row.batch_no || !row.batch_number)) {
+			frappe.db
+				.get_value("Serial and Batch Entry", { parent: row.serial_and_batch_bundle }, "batch_no")
+				.then((sbe) => {
+					if (sbe && sbe.message && sbe.message.batch_no) {
+						let b = sbe.message.batch_no;
+						row.batch_no = b;
+						row.batch_number = b;
+						row.use_serial_batch_fields = 1;
 						frm.refresh_field("items");
 					}
 				});
-			}
-		});
+		}
+
+		if (row.batch_number || row.batch_no) {
+			row.use_serial_batch_fields = 1;
+		}
+	});
+
+	if (changed) {
+		frm.refresh_field("items");
+	}
+
+	// 2. ONLY for Manufacture Stock Entry: sync Job Card output batch to the finished good row
+	let is_manufacture =
+		frm.doc.purpose === "Manufacture" ||
+		frm.doc.stock_entry_type === "Manufacture";
+
+	if (is_manufacture && jc_name) {
+		frappe.db
+			.get_value("Job Card", jc_name, ["custom_batch_no", "batch_no"])
+			.then((r) => {
+				if (!r || !r.message) return;
+				let jc = r.message;
+				let jc_batch = jc.custom_batch_no || jc.batch_no;
+
+				if (jc_batch) {
+					let fg_changed = false;
+					frm.doc.items.forEach((row) => {
+						if (row.is_finished_item && !row.batch_no && !row.batch_number) {
+							row.batch_number = jc_batch;
+							row.batch_no = jc_batch;
+							row.use_serial_batch_fields = 1;
+							fg_changed = true;
+						}
+					});
+					if (fg_changed) {
+						frm.refresh_field("items");
+					}
+				}
+			});
+	}
 }
 
 function sync_all_batch_quantities(frm) {
@@ -392,6 +415,10 @@ frappe.ui.form.on("Stock Entry", {
 	},
 
 	job_card: function (frm) {
+		sync_stranding_job_card_batches(frm);
+	},
+
+	custom_job_card: function (frm) {
 		sync_stranding_job_card_batches(frm);
 	},
 

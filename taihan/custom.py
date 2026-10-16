@@ -1299,199 +1299,184 @@ def create_stock_entry(doc, method):
     stock.save(ignore_permissions=True)
     stock.submit()
     batch = frappe.db.get_value("Batch", {"reference_name": stock.name}, "name")
-    frappe.db.sql("""
-        UPDATE `tabJob Card`
-        SET custom_batch_no = %s
-        WHERE name = %s
-    """, (batch, doc.name))
+    if not batch:
+        batch = frappe.db.get_value("Stock Entry Detail", {"parent": stock.name, "is_finished_item": 1}, "batch_no")
+
+    if batch:
+        frappe.db.sql("""
+            UPDATE `tabStock Entry Detail`
+            SET batch_number = %s, batch_no = %s, custom_batch_qty = %s
+            WHERE parent = %s AND is_finished_item = 1
+        """, (batch, batch, doc.for_quantity, stock.name))
+        frappe.db.sql("""
+            UPDATE `tabJob Card`
+            SET custom_batch_no = %s, batch_no = %s
+            WHERE name = %s
+        """, (batch, batch, doc.name))
+
     frappe.db.sql("""
         UPDATE `tabStock Entry`
         SET job_card = %s
         WHERE work_order = %s and stock_entry_type = "Manufacture" and name=%s
     """, (doc.name, doc.work_order,stock.name))
     
+def _get_transfer_stock_entry_items(bom, item_details, work_order, default_s_wh):
+    import json
+    if isinstance(item_details, str):
+        item_details = json.loads(item_details)
+
+    prod_plan = frappe.db.get_value("Work Order", work_order, "production_plan") if work_order else None
+    wip_warehouse = (work_order and frappe.db.get_value("Work Order", work_order, "wip_warehouse")) or "Work In Progress - TKFOC"
+    bom_doc = frappe.get_doc("BOM", bom) if bom else None
+    bom_item_map = {item.item_code: item for item in bom_doc.items} if bom_doc else {}
+
+    items = []
+
+    for j in item_details:
+        if hasattr(j, "as_dict"):
+            j = j.as_dict()
+        elif hasattr(j, "__dict__") and not isinstance(j, dict):
+            j = vars(j)
+
+        item_code = j.get("item_code")
+        if not item_code:
+            continue
+
+        required_qty = flt(j.get("required_qty") or j.get("qty") or j.get("transfer_qty"))
+        uom = j.get("uom") or j.get("stock_uom")
+        stock_uom = j.get("stock_uom") or uom
+        bom_item = bom_item_map.get(item_code)
+
+        # Check if item has a BOM or is batch-tracked / sub-assembly
+        has_batch_no = frappe.db.get_value("Item", item_code, "has_batch_no")
+        is_sub_assembly = bool(bom_item and bom_item.bom_no) or bool(has_batch_no)
+
+        allocated_batches = []
+        if is_sub_assembly:
+            # 1. Try to find completed Job Cards in the same Production Plan
+            jcs = []
+            if prod_plan:
+                jcs = frappe.db.sql("""
+                    SELECT jc.name, jc.work_order, jc.custom_batch_no, jc.custom_all_batch_nos, wo.fg_warehouse
+                    FROM `tabJob Card` jc
+                    JOIN `tabWork Order` wo ON jc.work_order = wo.name
+                    WHERE wo.production_plan = %s
+                      AND jc.production_item = %s
+                      AND jc.docstatus = 1
+                      AND jc.status = 'Completed'
+                    ORDER BY jc.creation ASC
+                """, (prod_plan, item_code), as_dict=True)
+
+            # 2. If no completed Job Cards in the same Production Plan, check recent completed Job Cards for this item
+            if not jcs:
+                jcs = frappe.db.sql("""
+                    SELECT jc.name, jc.work_order, jc.custom_batch_no, jc.custom_all_batch_nos, wo.fg_warehouse
+                    FROM `tabJob Card` jc
+                    JOIN `tabWork Order` wo ON jc.work_order = wo.name
+                    WHERE jc.production_item = %s
+                      AND jc.docstatus = 1
+                      AND jc.status = 'Completed'
+                    ORDER BY jc.creation DESC
+                    LIMIT 5
+                """, (item_code,), as_dict=True)
+
+            # Collect candidate batches from Job Cards
+            if jcs:
+                for jc in jcs:
+                    s_wh = jc.fg_warehouse or default_s_wh
+                    batches = [b.strip() for b in (jc.custom_all_batch_nos or "").split(",") if b.strip()]
+                    if not batches and jc.custom_batch_no:
+                        batches = [jc.custom_batch_no.strip()]
+                    for b in batches:
+                        if b not in [ab["batch_no"] for ab in allocated_batches]:
+                            batch_qty = flt(frappe.db.get_value("Batch", b, "batch_qty")) if frappe.db.exists("Batch", b) else 0
+                            allocated_batches.append({
+                                "batch_no": b,
+                                "batch_qty": batch_qty or required_qty,
+                                "job_card": jc.name,
+                                "s_warehouse": s_wh
+                            })
+
+            # 3. If still no batches found from Job Cards, check if Batch records exist for this item
+            if not allocated_batches:
+                available_batches = frappe.get_all(
+                    "Batch",
+                    filters={"item": item_code, "disabled": 0},
+                    fields=["name", "batch_qty"],
+                    order_by="creation desc",
+                    limit=5
+                )
+                for ab in available_batches:
+                    allocated_batches.append({
+                        "batch_no": ab.name,
+                        "batch_qty": flt(ab.batch_qty) or required_qty,
+                        "job_card": "",
+                        "s_warehouse": default_s_wh
+                    })
+
+        if allocated_batches:
+            remaining = required_qty
+            for ab in allocated_batches:
+                if remaining <= 0:
+                    break
+                row_qty = min(ab["batch_qty"], remaining) if ab["batch_qty"] > 0 else remaining
+                items.append({
+                    "s_warehouse": ab["s_warehouse"] or default_s_wh,
+                    "t_warehouse": wip_warehouse,
+                    "item_code": item_code,
+                    "qty": row_qty,
+                    "transfer_qty": row_qty,
+                    "uom": uom,
+                    "stock_uom": stock_uom,
+                    "batch_no": ab["batch_no"],
+                    "batch_number": ab["batch_no"],
+                    "custom_batch_qty": ab["batch_qty"],
+                    "job_card": ab["job_card"]
+                })
+                remaining -= row_qty
+            if remaining > 0:
+                last_wh = allocated_batches[0]["s_warehouse"] or default_s_wh
+                items.append({
+                    "s_warehouse": last_wh,
+                    "t_warehouse": wip_warehouse,
+                    "item_code": item_code,
+                    "qty": remaining,
+                    "transfer_qty": remaining,
+                    "uom": uom,
+                    "stock_uom": stock_uom,
+                    "batch_no": "",
+                    "batch_number": "",
+                    "custom_batch_qty": 0,
+                    "job_card": ""
+                })
+        else:
+            src_wh = (bom_item and bom_item.source_warehouse) or "Stores - TKFOC"
+            items.append({
+                "s_warehouse": src_wh,
+                "t_warehouse": wip_warehouse,
+                "item_code": item_code,
+                "qty": required_qty,
+                "transfer_qty": required_qty,
+                "uom": uom,
+                "stock_uom": stock_uom,
+                "batch_no": "",
+                "batch_number": "",
+                "custom_batch_qty": 0,
+                "job_card": ""
+            })
+
+    return items
+
+
 @frappe.whitelist()
 def create_transfer_stock_entry(bom, item_details, work_order):
-    import json
-
-    # Parse item_details if coming as string from JS
-    if isinstance(item_details, str):
-        item_details = json.loads(item_details)
-
-    bom_doc = frappe.get_doc("BOM", bom)
-
-    # First item of BOM
-    first_item = frappe.get_all(
-        "BOM Item",
-        filters={"parent": bom, "idx": 1},
-        fields=["item_code", "qty", "bom_no"],
-        limit=1
-    )
-
-    if not first_item:
-        frappe.throw("No items found in this BOM")
-
-    first_item = first_item[0]
-    frappe.log_error(title='jc',message=[first_item.bom_no, work_order])
-    # Fetch completed Job Cards
-    job_cards = frappe.get_all(
-        "Job Card",
-        filters={
-            "bom_no": first_item.bom_no,
-            "docstatus": 1,
-            "status": "Completed"
-        },
-        fields=["name", "for_quantity", "custom_batch_no", "custom_all_batch_nos", "production_item", "work_order"]
-    )
-
-    if not job_cards:
-        frappe.throw("No completed Job Cards found for BOM: {0}".format(first_item.bom_no))
-
-    items = []
-
-    first_item_required_qty = 0
-    for j in item_details:
-        if j["item_code"] == first_item.item_code:
-            first_item_required_qty = flt(j["required_qty"])
-            break
-    remaining = first_item_required_qty
-
-    for idx, item in enumerate(bom_doc.items):
-        if idx == 0:# Map first BOM item from Job Cards (one row per batch)
-            for jc in job_cards:
-                if frappe.db.get_value("Work Order",jc.work_order,"production_plan")== frappe.db.get_value("Work Order",work_order,"production_plan"):
-                    s_warehouse = frappe.db.get_value("Work Order", jc.work_order, "fg_warehouse") or "Buffering - TKFOC"
-                    all_batches = [b.strip() for b in (jc.custom_all_batch_nos or "").split(",") if b.strip()]
-                    if not all_batches:
-                        all_batches = [jc.custom_batch_no] if jc.custom_batch_no else []
-                    for b in all_batches:
-                        if remaining <= 0:
-                            break
-                        batch_qty = frappe.db.get_value("Batch", b, "batch_qty") if frappe.db.exists("Batch", b) else 0
-                        if batch_qty > 0:
-                            items.append({
-                                "s_warehouse": s_warehouse,
-                                "t_warehouse": "Work In Progress - TKFOC",
-                                "item_code": jc.production_item,
-                                "qty": flt(batch_qty),            # full available batch qty
-                                "uom": bom_doc.items[0].uom,
-                                "stock_uom": bom_doc.items[0].stock_uom,
-                                "batch_no": b,
-                                "job_card": jc.name
-                            })
-                            remaining -= flt(batch_qty)          # stop after the selected batch is used
-                    # for b in all_batches:
-                    #     if remaining <= 0:
-                    #         break
-                    #     batch_qty = frappe.db.get_value("Batch", b, "batch_qty") if frappe.db.exists("Batch", b) else 0
-                    #     if batch_qty > 0:
-                    #         items.append({
-                    #             "s_warehouse": s_warehouse,
-                    #             "t_warehouse": "Work In Progress - TKFOC",
-                    #             "item_code": jc.production_item,
-                    #             "qty": min(flt(batch_qty), remaining),
-                    #             "uom": bom_doc.items[0].uom,
-                    #             "stock_uom": bom_doc.items[0].stock_uom,
-                    #             "batch_no": b,
-                    #             "job_card": jc.name
-                    #         })
-                    #         remaining -= min(flt(batch_qty), remaining)
-                if remaining <= 0:
-                    break
-
-    # Add remaining BOM items from JS-provided item_details
-    for j in item_details:
-        if j["item_code"] == first_item.item_code:
-            continue
-        items.append({
-            "s_warehouse": "Stores - TKFOC",
-            "t_warehouse": "Work In Progress - TKFOC",
-            "item_code": j["item_code"],
-            "uom": j.get("uom") or j.get("stock_uom"),
-            "stock_uom": j.get("stock_uom"),
-            "qty": j["required_qty"]
-        })
-
-    return items
-
+    return _get_transfer_stock_entry_items(bom, item_details, work_order, default_s_wh="Buffering - TKFOC")
 
 
 @frappe.whitelist()
-def create_transfer_stock_entry_ja(bom,item_details, work_order):
-    if isinstance(item_details, str):
-        item_details = json.loads(item_details)
-    bom_doc = frappe.get_doc("BOM", bom)
-    first_item = frappe.get_all(
-        "BOM Item",
-        filters={"parent": bom, "idx": 1},
-        fields=["item_code", "qty", "bom_no"],
-        limit=1
-    )
+def create_transfer_stock_entry_ja(bom, item_details, work_order):
+    return _get_transfer_stock_entry_items(bom, item_details, work_order, default_s_wh="Stranding - TKFOC")
 
-    if not first_item:
-        frappe.throw("No items found in this BOM")
-
-    first_item = first_item[0]
-    job_cards = frappe.get_all(
-        "Job Card",
-        filters={
-            "bom_no": first_item.bom_no,
-            "docstatus": 1,
-            "status": "Completed"
-        },
-        fields=["name", "for_quantity", "custom_batch_no", "custom_all_batch_nos", "production_item","work_order"]
-    )
-
-
-
-    items = []
-
-    first_item_required_qty = 0
-    for j in item_details:
-        if j["item_code"] == first_item.item_code:
-            first_item_required_qty = flt(j["required_qty"])
-            break
-    remaining = first_item_required_qty
-
-    for idx, item in enumerate(bom_doc.items):
-        if idx == 0:
-            for jc in job_cards:
-                if frappe.db.get_value("Work Order",jc.work_order,"production_plan")== frappe.db.get_value("Work Order",work_order,"production_plan"):
-                    s_warehouse = frappe.db.get_value("Work Order", jc.work_order, "fg_warehouse") or "Stranding - TKFOC"
-                    all_batches = [b.strip() for b in (jc.custom_all_batch_nos or "").split(",") if b.strip()]
-                    if not all_batches:
-                        all_batches = [jc.custom_batch_no] if jc.custom_batch_no else []
-                    for b in all_batches:
-                        if remaining <= 0:
-                            break
-                        batch_qty = frappe.db.get_value("Batch", b, "batch_qty") if frappe.db.exists("Batch", b) else 0
-                        if batch_qty > 0:
-                            items.append({
-                                "s_warehouse": s_warehouse,
-                                "t_warehouse": "Work In Progress - TKFOC",
-                                "item_code": jc.production_item,
-                                "qty": min(flt(batch_qty), remaining),
-                                "uom":item.uom,
-                                "stock_uom":item.stock_uom,
-                                "batch_no": b,
-                                "job_card": jc.name
-                            })
-                            remaining -= min(flt(batch_qty), remaining)
-                if remaining <= 0:
-                    break
-    for j in item_details:
-        if j["item_code"] == first_item.item_code:
-            continue
-        items.append({
-            "s_warehouse": "Stores - TKFOC",
-            "t_warehouse": "Work In Progress - TKFOC",
-            "item_code": j["item_code"],
-            "uom": j.get("uom") or j.get("stock_uom"),
-            "stock_uom": j.get("stock_uom"),
-            "qty": j["required_qty"]
-        })
-
-    return items
 
 @frappe.whitelist()
 def delete_stock_entry(doc, method):

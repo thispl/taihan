@@ -52,7 +52,7 @@ def update_tube_color(doc, method):
                 doc.save()
 
 
-from frappe.utils import flt
+from frappe.utils import flt, get_datetime, time_diff_in_hours
 
 
 def _ensure_operation_completed_qty(doc, total_produced=0.0):
@@ -178,19 +178,29 @@ def create_stock_entry(doc, method):
     _update_work_order_produced_qty(doc)
 
     batch = frappe.db.get_value("Batch", {"reference_name": stock.name}, "name")
-    frappe.db.sql("""
-        UPDATE `tabJob Card`
-        SET custom_batch_no = %s
-        WHERE name = %s
-    """, (batch, doc.name))
+    if not batch:
+        batch = frappe.db.get_value("Stock Entry Detail", {"parent": stock.name, "is_finished_item": 1}, "batch_no")
+
+    if batch:
+        frappe.db.sql("""
+            UPDATE `tabStock Entry Detail`
+            SET batch_number = %s, batch_no = %s, custom_batch_qty = %s
+            WHERE parent = %s AND is_finished_item = 1
+        """, (batch, batch, delta, stock.name))
+        frappe.db.sql("""
+            UPDATE `tabJob Card`
+            SET custom_batch_no = %s, batch_no = %s
+            WHERE name = %s
+        """, (batch, batch, doc.name))
+        doc.custom_batch_no = batch
+        doc.batch_no = batch
+        _append_to_all_batch_nos(doc, batch)
+
     frappe.db.sql("""
         UPDATE `tabStock Entry`
         SET job_card = %s
         WHERE name = %s and stock_entry_type = "Manufacture"
     """, (doc.name, stock.name))
-
-    if batch:
-        _append_to_all_batch_nos(doc, batch)
 
     create_pending_material_return(doc)
 
@@ -384,12 +394,18 @@ import frappe
 @frappe.whitelist()
 def update_excess_qty(job_card, excess_qty, process_loss_qty=None, pending_qty=None):
     doc = frappe.get_doc("Job Card", job_card)
+    old_excess = flt(doc.custom_excess_qty)
+    new_excess = flt(excess_qty)
 
-    doc.db_set("custom_excess_qty", flt(excess_qty))
+    doc.db_set("custom_excess_qty", new_excess)
     if process_loss_qty is not None:
         doc.db_set("process_loss_qty", flt(process_loss_qty))
     if pending_qty is not None:
         doc.db_set("custom_pending_qty", flt(pending_qty))
+
+    if new_excess > old_excess and doc.custom_overproduction_approved:
+        doc.db_set("custom_overproduction_approved", 0)
+        doc.db_set("custom_overproduction_status", "")
 
     return True
 
@@ -409,7 +425,51 @@ def before_save_job_card(doc, method=None):
         if db_pending is not None:
             doc.custom_pending_qty = flt(db_pending)
 
+    if doc.docstatus == 1:
+        precision = doc.precision("total_completed_qty") or 2
+        if doc.items and flt(doc.total_completed_qty, precision) < flt(doc.for_quantity, precision):
+            doc.status = "Submitted"
+        elif flt(doc.total_completed_qty, precision) >= flt(doc.for_quantity, precision) or not doc.items:
+            doc.status = "Completed"
+        else:
+            doc.status = "Submitted"
+
+    if doc.get("time_logs"):
+        creation_dt = get_datetime(doc.creation) if doc.creation else None
+        prev_to_time = None
+        for idx, d in enumerate(doc.get("time_logs")):
+            if idx == 0:
+                if creation_dt:
+                    d.from_time = creation_dt
+            else:
+                if prev_to_time:
+                    d.from_time = prev_to_time
+            if d.from_time and d.to_time:
+                d.time_in_mins = time_diff_in_hours(d.to_time, d.from_time) * 60
+            prev_to_time = d.to_time
+
     update_stranding_job_card_items(doc)
+
+
+@frappe.whitelist()
+def sync_submitted_job_card_status(doc, method=None):
+    if doc.docstatus == 1:
+        precision = doc.precision("total_completed_qty") or 2
+        if doc.items and flt(doc.total_completed_qty, precision) < flt(doc.for_quantity, precision):
+            doc.db_set("status", "Submitted")
+            doc.status = "Submitted"
+            if doc.workstation:
+                frappe.db.set_value("Workstation", doc.workstation, "status", "Off")
+        elif flt(doc.total_completed_qty, precision) >= flt(doc.for_quantity, precision) or not doc.items:
+            doc.db_set("status", "Completed")
+            doc.status = "Completed"
+            if doc.workstation:
+                frappe.db.set_value("Workstation", doc.workstation, "status", "Off")
+        else:
+            doc.db_set("status", "Submitted")
+            doc.status = "Submitted"
+            if doc.workstation:
+                frappe.db.set_value("Workstation", doc.workstation, "status", "Off")
 
 
 def update_stranding_job_card_items(doc):
@@ -1012,6 +1072,19 @@ def create_excess_stock_entry(job_card):
     if not doc.wip_warehouse:
         frappe.throw("WIP Warehouse is not set in Job Card")
 
+    existing_entry = frappe.db.get_value(
+        "Stock Entry",
+        {
+            "custom_work_order": doc.work_order,
+            "custom_is_excess_entry": 1,
+            "docstatus": 1
+        },
+        "name"
+    )
+    if existing_entry:
+        frappe.msgprint(frappe._("Excess Material Transfer {0} already exists and is submitted.").format(existing_entry))
+        return {"name": existing_entry}
+
     stock = frappe.new_doc("Stock Entry")
     stock.stock_entry_type = "Material Transfer"
     stock.purpose = "Material Transfer"
@@ -1171,3 +1244,16 @@ def get_job_cards_for_work_order(work_order):
             else ""
         )
     return cards
+
+
+def ensure_overproduction_approval_fields():
+    """Ensure custom fields and fix status on submitted Job Cards."""
+    frappe.db.sql("""
+        UPDATE `tabJob Card`
+        SET status = 'Submitted'
+        WHERE docstatus = 1
+          AND status = 'Work In Progress'
+          AND for_quantity != total_completed_qty
+    """)
+    frappe.db.commit()
+
