@@ -1322,6 +1322,8 @@ def create_stock_entry(doc, method):
     
 def _get_transfer_stock_entry_items(bom, item_details, work_order, default_s_wh):
     import json
+    from erpnext.stock.doctype.batch.batch import get_batch_qty
+
     if isinstance(item_details, str):
         item_details = json.loads(item_details)
 
@@ -1388,14 +1390,23 @@ def _get_transfer_stock_entry_items(bom, item_details, work_order, default_s_wh)
                     if not batches and jc.custom_batch_no:
                         batches = [jc.custom_batch_no.strip()]
                     for b in batches:
-                        if b not in [ab["batch_no"] for ab in allocated_batches]:
-                            batch_qty = flt(frappe.db.get_value("Batch", b, "batch_qty")) if frappe.db.exists("Batch", b) else 0
-                            allocated_batches.append({
-                                "batch_no": b,
-                                "batch_qty": batch_qty or required_qty,
-                                "job_card": jc.name,
-                                "s_warehouse": s_wh
-                            })
+                        if b in [ab["batch_no"] for ab in allocated_batches]:
+                            continue
+                        # Check actual stock in the source warehouse (not the
+                        # Batch doc's total). Skip batches with no stock there.
+                        batch_qty = (
+                            flt(get_batch_qty(b, s_wh, item_code))
+                            if frappe.db.exists("Batch", b)
+                            else 0
+                        )
+                        if batch_qty <= 0:
+                            continue
+                        allocated_batches.append({
+                            "batch_no": b,
+                            "batch_qty": batch_qty,
+                            "job_card": jc.name,
+                            "s_warehouse": s_wh
+                        })
 
             # 3. If still no batches found from Job Cards, check if Batch records exist for this item
             if not allocated_batches:
@@ -1407,9 +1418,12 @@ def _get_transfer_stock_entry_items(bom, item_details, work_order, default_s_wh)
                     limit=5
                 )
                 for ab in available_batches:
+                    wh_qty = flt(get_batch_qty(ab.name, default_s_wh, item_code))
+                    if wh_qty <= 0:
+                        continue
                     allocated_batches.append({
                         "batch_no": ab.name,
-                        "batch_qty": flt(ab.batch_qty) or required_qty,
+                        "batch_qty": wh_qty,
                         "job_card": "",
                         "s_warehouse": default_s_wh
                     })

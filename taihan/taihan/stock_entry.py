@@ -96,9 +96,16 @@ def sync_stock_entry_batch_numbers(doc, method=None):
 	if jc_name:
 		jc_batch = frappe.db.get_value("Job Card", jc_name, "custom_batch_no") or frappe.db.get_value("Job Card", jc_name, "batch_no")
 
+	is_manufacture = (
+		doc.get("stock_entry_type") == "Manufacture" or doc.get("purpose") == "Manufacture"
+	)
+
 	for row in doc.items:
-		# If finished item in Manufacture and batch not yet set, take from linked Job Card if available
-		if row.is_finished_item and not row.batch_no and not row.get("batch_number") and jc_batch:
+		# If finished item and batch not yet set, take from linked Job Card if available.
+		# Skip for Manufacture: the finished row must stay empty so ERPNext auto-creates
+		# a NEW Batch on submit. Reusing the Job Card's previous batch would merge this
+		# run's output into the earlier partial-production batch.
+		if row.is_finished_item and not is_manufacture and not row.batch_no and not row.get("batch_number") and jc_batch:
 			row.batch_no = jc_batch
 			row.batch_number = jc_batch
 

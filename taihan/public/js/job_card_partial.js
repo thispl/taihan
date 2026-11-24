@@ -26,6 +26,17 @@ frappe.ui.form.on("Job Card", {
 						}
 						if (r.custom_tube_color && !frm.doc.custom_tube_color) {
 							frm.set_value("custom_tube_color", r.custom_tube_color);
+						} else if (!frm.doc.custom_tube_color) {
+							frappe.db.get_list('Tube Color Child', {
+								filters: { parent: frm.doc.work_order, parenttype: 'Work Order' },
+								fields: ['tube_color'],
+								order_by: 'idx asc',
+								limit: 2
+							}).then(colors => {
+								if (colors && colors.length === 1 && !frm.doc.custom_tube_color) {
+									frm.set_value('custom_tube_color', colors[0].tube_color);
+								}
+							});
 						}
 					}
 				}
@@ -380,6 +391,23 @@ function open_complete_job_dialog(frm) {
 	let remaining_qty = flt(frm.doc.for_quantity) - flt(frm.doc.total_completed_qty);
 	if (remaining_qty < 0) remaining_qty = 0;
 
+	// End Time default uses the browser clock, which can lag the server clock
+	// used for doc.creation / time log to_time. Ensure the default is always
+	// later than the reference start time so the validation cannot trip.
+	let dialog_start_time =
+		frm.doc.time_logs && frm.doc.time_logs.length
+			? frm.doc.time_logs[frm.doc.time_logs.length - 1].to_time
+			: frm.doc.creation;
+	let default_end_time = frappe.datetime.now_datetime();
+	if (
+		dialog_start_time &&
+		moment(default_end_time).isSameOrBefore(moment(dialog_start_time))
+	) {
+		default_end_time = moment(dialog_start_time)
+			.add(1, "second")
+			.format("YYYY-MM-DD HH:mm:ss");
+	}
+
 	let default_cycle_qty = remaining_qty > 0 ? remaining_qty : flt(frm.doc.for_quantity);
 	let timezone =
 		(frappe.boot.time_zone && (frappe.boot.time_zone.user || frappe.boot.time_zone.system)) ||
@@ -500,7 +528,7 @@ function open_complete_job_dialog(frm) {
 				fieldname: "end_time",
 				label: __("End Time"),
 				fieldtype: "Datetime",
-				default: frappe.datetime.now_datetime(),
+				default: default_end_time,
 				description: timezone,
 			},
 		],

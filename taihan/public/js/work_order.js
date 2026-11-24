@@ -39,7 +39,12 @@ frappe.ui.form.on('Work Order', {
                     }
                 }
             });
+
+            sync_work_order_tube_colors_from_pp(frm);
         }
+    },
+    custom_operation_name: function (frm) {
+        sync_work_order_tube_colors_from_pp(frm);
     },
     production_plan_sub_assembly_item: function (frm) {
         if (frm.doc.production_plan_sub_assembly_item) {
@@ -49,13 +54,37 @@ frappe.ui.form.on('Work Order', {
                 'custom_tube_colour',
                 function (r) {
                     if (r && r.custom_tube_colour) {
-                        frm.set_value('custom_tube_color', r.custom_tube_colour);
+                        frm.clear_table('custom_tube_color');
+                        let child = frm.add_child('custom_tube_color');
+                        child.tube_color = r.custom_tube_colour;
+                        frm.refresh_field('custom_tube_color');
                     }
                 }
             );
         }
     }
 });
+
+function sync_work_order_tube_colors_from_pp(frm) {
+    if (!frm.doc.production_plan) return;
+    let op = (frm.doc.custom_operation_name || "").toLowerCase();
+    if (op === "stranding" || op === "jacketing") {
+        frappe.call({
+            method: "taihan.taihan.work_order.get_production_plan_tube_colors",
+            args: { production_plan: frm.doc.production_plan },
+            callback: function (r) {
+                if (r.message && r.message.length) {
+                    frm.clear_table('custom_tube_color');
+                    r.message.forEach(color => {
+                        let child = frm.add_child('custom_tube_color');
+                        child.tube_color = color;
+                    });
+                    frm.refresh_field('custom_tube_color');
+                }
+            }
+        });
+    }
+}
 
 function open_custom_job_card_dialog(frm) {
     if (!frm.doc.operations || !frm.doc.operations.length) {

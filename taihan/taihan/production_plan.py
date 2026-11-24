@@ -74,17 +74,17 @@ class CustomProductionPlan(ProductionPlan):
                 bin_data = frappe.db.get_value(
                     "Bin",
                     {"item_code": item_code, "warehouse": wh_name},
-                    ["actual_qty", "reserved_qty_for_production"],
+                    ["actual_qty"],
                     as_dict=True,
                 )
                 act_qty = flt(bin_data.actual_qty) if bin_data else 0.0
-                res_qty = flt(bin_data.reserved_qty_for_production) if bin_data else 0.0
-                avail_qty = max(0.0, act_qty - res_qty)
+                avail_qty = max(0.0, act_qty)
                 stock_cache[cache_key] = {
                     "actual_qty": act_qty,
                     "available_qty": avail_qty,
                 }
             return stock_cache[cache_key]
+
 
         if self.skip_available_sub_assembly_item and self.sub_assembly_warehouse:
             selected_wh = (self.sub_assembly_warehouse or "").strip()

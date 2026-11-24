@@ -1,32 +1,114 @@
 import frappe
 
 
+def get_work_order_process_type(doc):
+    """Detect if Work Order is Buffering, Stranding, or Jacketing."""
+    candidates = []
+    if getattr(doc, "custom_operation_name", None):
+        candidates.append(str(doc.custom_operation_name))
+
+    if getattr(doc, "operations", None):
+        for op in doc.operations:
+            if getattr(op, "operation", None):
+                candidates.append(str(op.operation))
+
+    if getattr(doc, "bom_no", None):
+        bom_ops = frappe.get_all(
+            "BOM Operation",
+            filters={"parent": doc.bom_no},
+            fields=["operation"],
+            order_by="idx asc",
+        )
+        for b_op in bom_ops:
+            if b_op.operation:
+                candidates.append(str(b_op.operation))
+
+    if getattr(doc, "fg_warehouse", None):
+        candidates.append(str(doc.fg_warehouse))
+
+    if getattr(doc, "production_plan_sub_assembly_item", None):
+        sub_item = frappe.db.get_value(
+            "Production Plan Sub Assembly Item",
+            doc.production_plan_sub_assembly_item,
+            ["fg_warehouse", "custom_tube_colour"],
+            as_dict=True,
+        )
+        if sub_item:
+            if sub_item.fg_warehouse:
+                candidates.append(str(sub_item.fg_warehouse))
+            if sub_item.custom_tube_colour:
+                candidates.append("Buffering")
+
+    for c in candidates:
+        low = c.lower()
+        if "buffering" in low:
+            return "Buffering"
+        elif "stranding" in low:
+            return "Stranding"
+        elif "jacketing" in low or "sheathing" in low:
+            return "Jacketing"
+
+    return None
+
+
 def validate_work_order(doc, method=None):
+    process_type = get_work_order_process_type(doc)
+    if process_type and not doc.custom_operation_name:
+        doc.custom_operation_name = process_type
+
     if doc.production_plan:
-        doc.custom_fiber_count = frappe.db.get_value("Production Plan", doc.production_plan, "custom_fiber_count")
-        if doc.custom_operation_name == "Buffering":
+        doc.custom_fiber_count = frappe.db.get_value(
+            "Production Plan", doc.production_plan, "custom_fiber_count"
+        )
+        if doc.custom_operation_name == "Buffering" or process_type == "Buffering":
             doc.custom_fiber_count = 12
 
-        # Fetch Tube Colour from Production Plan Sub Assembly table
-        tube_color = None
-        if doc.production_plan_sub_assembly_item:
-            tube_color = frappe.db.get_value(
-                "Production Plan Sub Assembly Item",
-                doc.production_plan_sub_assembly_item,
-                "custom_tube_colour",
-            )
-        elif doc.production_item:
-            tube_color = frappe.db.get_value(
-                "Production Plan Sub Assembly Item",
-                {
-                    "parent": doc.production_plan,
-                    "production_item": doc.production_item,
-                },
-                "custom_tube_colour",
-            )
+        pp_tube_colors = get_production_plan_tube_colors(doc.production_plan)
 
-        if tube_color:
-            doc.custom_tube_color = tube_color
+        if process_type in ("Stranding", "Jacketing"):
+            # If Stranding or Jacketing -> Tube Color should be set to all colors updated in Production Plan
+            if pp_tube_colors:
+                existing_colors = [
+                    d.tube_color
+                    for d in doc.get("custom_tube_color", [])
+                    if getattr(d, "tube_color", None)
+                ]
+                if not existing_colors or doc.is_new():
+                    doc.set("custom_tube_color", [])
+                    for color in pp_tube_colors:
+                        doc.append("custom_tube_color", {"tube_color": color})
+
+        elif process_type == "Buffering":
+            # If Buffering then update only one color per Work Order
+            tube_color = None
+            if doc.production_plan_sub_assembly_item:
+                tube_color = frappe.db.get_value(
+                    "Production Plan Sub Assembly Item",
+                    doc.production_plan_sub_assembly_item,
+                    "custom_tube_colour",
+                )
+            elif doc.production_item:
+                tube_color = frappe.db.get_value(
+                    "Production Plan Sub Assembly Item",
+                    {
+                        "parent": doc.production_plan,
+                        "production_item": doc.production_item,
+                    },
+                    "custom_tube_colour",
+                )
+
+            if not tube_color and doc.production_item:
+                tube_color = frappe.db.get_value("Item", doc.production_item, "custom_tube_colour")
+
+            if tube_color:
+                existing_colors = [
+                    d.tube_color
+                    for d in doc.get("custom_tube_color", [])
+                    if getattr(d, "tube_color", None)
+                ]
+                if not existing_colors or existing_colors != [tube_color] or doc.is_new():
+                    doc.set("custom_tube_color", [])
+                    doc.append("custom_tube_color", {"tube_color": tube_color})
 
     if doc.operations:
         seq_id = 0
@@ -39,6 +121,56 @@ def validate_work_order(doc, method=None):
 
 def before_insert_work_order(doc, method=None):
     validate_work_order(doc, method)
+
+
+def ensure_tube_color_custom_field():
+    """Ensure custom_tube_color on Work Order is Table MultiSelect pointing to Tube Color Child."""
+    cf_name = "Work Order-custom_tube_color"
+    needs_recreate = False
+    if frappe.db.exists("Custom Field", cf_name):
+        cf = frappe.get_doc("Custom Field", cf_name)
+        if cf.fieldtype != "Table MultiSelect" or cf.options != "Tube Color Child" or cf.depends_on:
+            frappe.delete_doc("Custom Field", cf_name, force=True)
+            needs_recreate = True
+    else:
+        needs_recreate = True
+
+    if needs_recreate:
+        cf_doc = frappe.new_doc("Custom Field")
+        cf_doc.dt = "Work Order"
+        cf_doc.fieldname = "custom_tube_color"
+        cf_doc.label = "Tube Color"
+        cf_doc.fieldtype = "Table MultiSelect"
+        cf_doc.options = "Tube Color Child"
+        cf_doc.insert_after = "custom_fiber_count"
+        cf_doc.insert(ignore_permissions=True)
+        frappe.clear_cache(doctype="Work Order")
+
+    # Migrate any existing values in tabWork Order.custom_tube_color to tabTube Color Child
+    try:
+        existing_rows = frappe.db.sql("""
+            SELECT name, custom_tube_color
+            FROM `tabWork Order`
+            WHERE custom_tube_color IS NOT NULL AND custom_tube_color != ''
+        """, as_dict=True)
+        for row in existing_rows:
+            has_child = frappe.db.exists("Tube Color Child", {
+                "parent": row.name,
+                "parenttype": "Work Order",
+                "parentfield": "custom_tube_color"
+            })
+            if not has_child and row.custom_tube_color:
+                frappe.get_doc({
+                    "doctype": "Tube Color Child",
+                    "parent": row.name,
+                    "parenttype": "Work Order",
+                    "parentfield": "custom_tube_color",
+                    "tube_color": row.custom_tube_color,
+                    "idx": 1
+                }).insert(ignore_permissions=True)
+        frappe.db.commit()
+    except Exception:
+        pass
 
 
 def get_stranding_buffering_items(bom_no):
@@ -73,6 +205,7 @@ def get_stranding_buffering_items(bom_no):
     return item_color_map, has_tube_colors
 
 
+@frappe.whitelist()
 def get_production_plan_tube_colors(production_plan):
     if not production_plan:
         return []
@@ -80,7 +213,7 @@ def get_production_plan_tube_colors(production_plan):
         str(d.tube_color).strip()
         for d in frappe.get_all(
             "Tube Color Child",
-            filters={"parent": production_plan},
+            filters={"parent": production_plan, "parenttype": "Production Plan"},
             fields=["tube_color"],
             order_by="idx asc",
         )

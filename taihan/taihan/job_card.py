@@ -42,9 +42,27 @@ def update_tube_color(doc, method):
             if wo.get("custom_loose_tube_color") and not doc.custom_loose_tube_color:
                 doc.custom_loose_tube_color = wo.custom_loose_tube_color
                 need_save = True
-            if wo.get("custom_tube_color") and not doc.custom_tube_color:
-                doc.custom_tube_color = wo.custom_tube_color
-                need_save = True
+            if not doc.custom_tube_color:
+                if wo.get("custom_tube_color"):
+                    doc.custom_tube_color = wo.custom_tube_color
+                    need_save = True
+                else:
+                    colors = [
+                        d.tube_color
+                        for d in frappe.get_all(
+                            "Tube Color Child",
+                            filters={"parent": doc.work_order, "parenttype": "Work Order"},
+                            fields=["tube_color"],
+                            order_by="idx asc",
+                        )
+                        if d.tube_color
+                    ]
+                    if len(colors) == 1:
+                        doc.custom_tube_color = colors[0]
+                        need_save = True
+                    elif len(colors) > 1 and doc.operation == "Buffering":
+                        doc.custom_tube_color = colors[0]
+                        need_save = True
             if wo.get("custom_tube_thickness") and not doc.custom_tube_thickness:
                 doc.custom_tube_thickness = wo.custom_tube_thickness
                 need_save = True
@@ -1248,6 +1266,12 @@ def get_job_cards_for_work_order(work_order):
 
 def ensure_overproduction_approval_fields():
     """Ensure custom fields and fix status on submitted Job Cards."""
+    try:
+        from taihan.taihan.work_order import ensure_tube_color_custom_field
+        ensure_tube_color_custom_field()
+    except Exception:
+        pass
+
     frappe.db.sql("""
         UPDATE `tabJob Card`
         SET status = 'Submitted'

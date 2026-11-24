@@ -209,6 +209,11 @@ def create_partial_stock_entry(job_card):
     from taihan.taihan.job_card import _update_work_order_produced_qty
     _update_work_order_produced_qty(doc)
 
+    # Stock Entry submit hooks updated this Job Card row directly in the DB
+    # (batch fields, all-batch history). Reload so save() below does not fail
+    # with a "document has been modified" timestamp error.
+    doc.reload()
+
     # Keep for_quantity and required_qty at their original values.
     # total_completed_qty is recalculated from time logs during save and will reflect
     # the cumulative completed qty (including this partial run). This ensures

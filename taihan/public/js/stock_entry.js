@@ -290,8 +290,6 @@ function handle_batch_entry(frm, cdt, cdn, entered_field) {
 function sync_stranding_job_card_batches(frm) {
 	if (!frm.doc.items || !frm.doc.items.length) return;
 
-	let jc_name = frm.doc.job_card || frm.doc.custom_job_card;
-
 	// 1. Sync batch_no <-> batch_number and serial_and_batch_bundle for existing values
 	let changed = false;
 	frm.doc.items.forEach((row) => {
@@ -328,66 +326,57 @@ function sync_stranding_job_card_batches(frm) {
 		frm.refresh_field("items");
 	}
 
-	// 2. ONLY for Manufacture Stock Entry: sync Job Card output batch to the finished good row
-	let is_manufacture =
-		frm.doc.purpose === "Manufacture" ||
-		frm.doc.stock_entry_type === "Manufacture";
-
-	if (is_manufacture && jc_name) {
-		frappe.db
-			.get_value("Job Card", jc_name, ["custom_batch_no", "batch_no"])
-			.then((r) => {
-				if (!r || !r.message) return;
-				let jc = r.message;
-				let jc_batch = jc.custom_batch_no || jc.batch_no;
-
-				if (jc_batch) {
-					let fg_changed = false;
-					frm.doc.items.forEach((row) => {
-						if (row.is_finished_item && !row.batch_no && !row.batch_number) {
-							row.batch_number = jc_batch;
-							row.batch_no = jc_batch;
-							row.use_serial_batch_fields = 1;
-							fg_changed = true;
-						}
-					});
-					if (fg_changed) {
-						frm.refresh_field("items");
-					}
-				}
-			});
-	}
+	// NOTE: Do NOT pre-fill the Job Card's previous batch on Manufacture
+	// finished rows - an empty batch lets ERPNext auto-create a NEW Batch on
+	// submit. Copying the old batch would merge this run's output into the
+	// earlier partial-production batch.
 }
 
 function sync_all_batch_quantities(frm) {
 	if (!frm.doc.items || !frm.doc.items.length) return;
+
+	// Assign row.custom_batch_qty directly (not via frappe.model.set_value) so
+	// this display-only sync does not mark the form dirty after save. Only a
+	// positive batch_qty is synced - a null/0 value would otherwise wipe the
+	// saved quantity on every refresh.
+	let changed = false;
+	let tasks = [];
+
 	frm.doc.items.forEach((row) => {
 		let batch = row.batch_number || row.batch_no;
 		if (batch) {
-			frappe.db.get_value("Batch", batch, "batch_qty").then((r) => {
-				if (r && r.message && r.message.batch_qty !== undefined) {
-					let bq = flt(r.message.batch_qty);
-					if (flt(row.custom_batch_qty) !== bq) {
-						frappe.model.set_value(row.doctype, row.name, "custom_batch_qty", bq);
+			tasks.push(
+				frappe.db.get_value("Batch", batch, "batch_qty").then((r) => {
+					let bq = r && r.message ? flt(r.message.batch_qty) : 0;
+					if (bq > 0 && flt(row.custom_batch_qty) !== bq) {
+						row.custom_batch_qty = bq;
+						changed = true;
 					}
-				}
-			});
+				})
+			);
 		} else if (row.serial_and_batch_bundle) {
-			frappe.db
-				.get_value("Serial and Batch Entry", { parent: row.serial_and_batch_bundle }, "batch_no")
-				.then((sbe) => {
-					if (sbe && sbe.message && sbe.message.batch_no) {
-						frappe.db.get_value("Batch", sbe.message.batch_no, "batch_qty").then((r) => {
-							if (r && r.message && r.message.batch_qty !== undefined) {
-								let bq = flt(r.message.batch_qty);
-								if (flt(row.custom_batch_qty) !== bq) {
-									frappe.model.set_value(row.doctype, row.name, "custom_batch_qty", bq);
-								}
-							}
-						});
-					}
-				});
+			tasks.push(
+				frappe.db
+					.get_value("Serial and Batch Entry", { parent: row.serial_and_batch_bundle }, "batch_no")
+					.then((sbe) => {
+						if (sbe && sbe.message && sbe.message.batch_no) {
+							return frappe.db
+								.get_value("Batch", sbe.message.batch_no, "batch_qty")
+								.then((r) => {
+									let bq = r && r.message ? flt(r.message.batch_qty) : 0;
+									if (bq > 0 && flt(row.custom_batch_qty) !== bq) {
+										row.custom_batch_qty = bq;
+										changed = true;
+									}
+								});
+						}
+					})
+			);
 		}
+	});
+
+	Promise.all(tasks).then(() => {
+		if (changed) frm.refresh_field("items");
 	});
 }
 
@@ -448,8 +437,9 @@ frappe.ui.form.on("Stock Entry Detail", {
 				.then((sbe) => {
 					if (sbe && sbe.message && sbe.message.batch_no) {
 						frappe.db.get_value("Batch", sbe.message.batch_no, "batch_qty").then((r) => {
-							if (r && r.message && r.message.batch_qty !== undefined) {
-								frappe.model.set_value(cdt, cdn, "custom_batch_qty", flt(r.message.batch_qty));
+							let bq = r && r.message ? flt(r.message.batch_qty) : 0;
+							if (bq > 0) {
+								frappe.model.set_value(cdt, cdn, "custom_batch_qty", bq);
 							}
 						});
 					}
